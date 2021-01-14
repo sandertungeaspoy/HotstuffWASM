@@ -64,7 +64,7 @@ type options struct {
 }
 
 type manualConfig struct {
-	ID      int
+	SelfID  int
 	servers []struct {
 		ID         int
 		PeerAddr   string
@@ -276,10 +276,28 @@ func main() {
 
 	setup.SelfID = 1
 	setup.servers[1].ID = 1
-	setup.servers[1].PeerAddr =
-		setup.servers[1].ClientAddr
-	setup.servers[1].Cert
-	setup.servers[1].Pubkey
+	setup.servers[1].PeerAddr = "127.0.0.1:13371"
+	setup.servers[1].ClientAddr = "127.0.0.1:23371"
+	setup.servers[1].Cert = &cert1
+	setup.servers[1].PubKey = publicKey1
+
+	setup.servers[2].ID = 2
+	setup.servers[2].PeerAddr = "127.0.0.1:13372"
+	setup.servers[2].ClientAddr = "127.0.0.1:23372"
+	setup.servers[2].Cert = &cert2
+	setup.servers[2].PubKey = publicKey2
+
+	setup.servers[3].ID = 3
+	setup.servers[3].PeerAddr = "127.0.0.1:13373"
+	setup.servers[3].ClientAddr = "127.0.0.1:23373"
+	setup.servers[3].Cert = &cert3
+	setup.servers[3].PubKey = publicKey3
+
+	setup.servers[4].ID = 4
+	setup.servers[4].PeerAddr = "127.0.0.1:13374"
+	setup.servers[4].ClientAddr = "127.0.0.1:23374"
+	setup.servers[4].Cert = &cert4
+	setup.servers[4].PubKey = publicKey4
 
 	privkey, err := data.ReadPrivateKeyFile(conf.Privkey)
 	if err != nil {
@@ -361,6 +379,15 @@ func main() {
 		replicaConfig.Replicas[r.ID] = info
 	}
 	replicaConfig.QuorumSize = len(replicaConfig.Replicas) - (len(replicaConfig.Replicas)-1)/3
+
+	fmt.Println(cert)
+	fmt.Println(cert1)
+
+	fmt.Println(replicaConfig.Replicas[1].PubKey)
+	fmt.Println(publicKey1)
+
+	fmt.Println()
+	fmt.Println()
 
 	// fmt.Println(replicaConfig.Replicas[1].Address)
 	srv := newHotStuffServer(&conf, replicaConfig)
