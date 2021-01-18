@@ -4,7 +4,7 @@
 		<script src="wasm_exec.js"></script>
 		<script>
 			const go = new Go();
-			WebAssembly.instantiateStreaming(fetch("client.wasm"), go.importObject).then(
+			WebAssembly.instantiateStreaming(fetch("server.wasm"), go.importObject).then(
 				result => {
           			mod = result.module;
           			inst = result.instance;
@@ -18,9 +18,8 @@
       		}
 		</script>
 	</head>
-	<body></body>
 	<body>
-		<h1>HotStuff WASM Client</h1>
+		<h1>HotStuff WASM Server</h1>
 		<button onClick="run();" id="runButton" disabled>Run</button>
 	</body>
 </html>
