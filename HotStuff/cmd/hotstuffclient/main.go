@@ -24,7 +24,7 @@ import (
 	"github.com/relab/hotstuff/data"
 	"github.com/spf13/pflag"
 
-	// "github.com/spf13/viper"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/proto"
@@ -96,23 +96,23 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	// viper.BindPFlags(pflag.CommandLine)
+	viper.BindPFlags(pflag.CommandLine)
 
 	// read main config file in working dir
-	// viper.SetConfigName("hotstuff")
-	// viper.AddConfigPath(".")
-	// err := viper.ReadInConfig()
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Failed to read config: %v\n", err)
-	// 	os.Exit(1)
-	// }
+	viper.SetConfigName("hotstuff")
+	viper.AddConfigPath(".")
+	err := viper.ReadInConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to read config: %v\n", err)
+		os.Exit(1)
+	}
 
 	var conf options
-	// err = viper.Unmarshal(&conf)
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Failed to unmarshal config: %v\n", err)
-	// 	os.Exit(1)
-	// }
+	err = viper.Unmarshal(&conf)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to unmarshal config: %v\n", err)
+		os.Exit(1)
+	}
 
 	replicaConfig := config.NewConfig(0, nil, nil)
 	for _, r := range conf.Replicas {

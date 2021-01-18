@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"log"
@@ -317,11 +318,11 @@ func main() {
 	setup.servers[4].PrivKey = privateKey4
 	setup.servers[4].CertPEM = certPEM4
 
-	// privkey, err := data.ReadPrivateKeyFile(conf.Privkey)
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Failed to read private key file: %v\n", err)
-	// 	os.Exit(1)
-	// }
+	privkey, err := data.ReadPrivateKeyFile(conf.Privkey)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to read private key file: %v\n", err)
+		os.Exit(1)
+	}
 
 	// var cert *tls.Certificate
 	// if conf.TLS {
@@ -351,17 +352,26 @@ func main() {
 	// 	}
 	// 	cert = &tlsCert
 
-	// 	fmt.Println("Private KEY PEM")
-	// 	fmt.Println(privkeyPEM1)
-	// 	fmt.Println(pkPEM)
+	// 	// fmt.Println("Private KEY PEM")
+	// 	// fmt.Println(privkeyPEM1)
+	// 	// fmt.Println(pkPEM)
 	// }
 
 	var clientAddress string
 
-	// replicaConfig := config.NewConfig(conf.SelfID, privkey, cert)
-	replicaConfig := config.NewConfig(config.ReplicaID(setup.SelfID), privateKey1, &cert1)
+	selfPrivkey := setup.servers[setup.SelfID].PrivKey
+	fmt.Fprintf(os.Stderr, "\n Min \n")
+	fmt.Fprintf(os.Stderr, hex.EncodeToString(selfPrivkey.D.Bytes()))
+	fmt.Fprintf(os.Stderr, "\n Ikke min \n")
+	fmt.Fprintf(os.Stderr, hex.EncodeToString(privkey.D.Bytes()))
 
-	// replicaConfig.BatchSize = 4 //conf.BatchSize
+	// fmt.Fprintf(os.Stderr, hex.EncodeToString(cert.Certificate[0]))
+	// fmt.Fprintf(os.Stderr, hex.EncodeToString(cert1.Certificate[0]))
+
+	replicaConfig := config.NewConfig(config.ReplicaID(setup.SelfID), selfPrivkey, &cert1)
+	// replicaConfig := config.NewConfig(config.ReplicaID(setup.SelfID), privateKey1, &cert1) //&cert1)
+
+	// replicaConfig.BatchSize = conf.BatchSize
 	// for _, r := range conf.Replicas {
 	// 	key, err := data.ReadPublicKeyFile(r.Pubkey)
 	// 	if err != nil {
@@ -403,7 +413,7 @@ func main() {
 	// 	replicaConfig.Replicas[r.ID] = info
 	// }
 
-	replicaConfig.BatchSize = 4 //conf.BatchSize
+	replicaConfig.BatchSize = conf.BatchSize
 	for _, r := range setup.servers {
 		if conf.TLS {
 			if !replicaConfig.CertPool.AppendCertsFromPEM(r.CertPEM) {
