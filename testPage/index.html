@@ -1,13 +1,21 @@
 <html>
 	<head>
 		<meta charset="utf-8"/>
-		<script src="wasm_exec_server.js"></script>
 		<script>
-			const go = new Go();
-			WebAssembly.instantiateStreaming(fetch("server.wasm"), go.importObject).then((result) => {
-				go.run(result.instance);
-			});
+
+			function server(){
+				window.location.href='http://localhost:8080/testPage/server.html'
+			}
+
+			function client(){
+				window.location.href='http://localhost:8080/testPage/test.html'
+			}
 		</script>
 	</head>
 	<body></body>
+	<body>
+		<h1>HotStuff WASM</h1>
+		<button onClick="server();" id="serverButton">Server</button>
+		<button onClick="client();" id="clientButton">Client</button>
+	</body>
 </html>
