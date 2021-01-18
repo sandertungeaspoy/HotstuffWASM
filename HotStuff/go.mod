@@ -1,6 +1,6 @@
-module github.com/relab/hotstuff
+module github.com/HotStuffWASM/hotstuff
 
-go 1.13
+go 1.15
 
 require (
 	github.com/bitherhq/go-bither v1.7.1
@@ -13,6 +13,7 @@ require (
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
 	github.com/pelletier/go-toml v1.8.0 // indirect
 	github.com/relab/gorums v0.2.1-0.20200712223440-c8898b990cd6
+	github.com/relab/hotstuff v0.0.0-20200729074729-d55ff28585e5
 	github.com/spf13/afero v1.3.2 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect

@@ -5,9 +5,9 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -20,7 +20,6 @@ import (
 	"syscall"
 	"time"
 
-	// keyCode "github.com/bitherhq/go-bither/crypto"
 	"github.com/felixge/fgprof"
 	"github.com/relab/hotstuff"
 	"github.com/relab/hotstuff/client"
@@ -64,14 +63,17 @@ type options struct {
 }
 
 type manualConfig struct {
-	SelfID  int
-	servers []struct {
-		ID         int
-		PeerAddr   string
-		ClientAddr string
-		PubKey     *ecdsa.PublicKey
-		Cert       *tls.Certificate
-	}
+	SelfID  uint32
+	servers map[uint32]*servers
+}
+type servers struct {
+	ID         uint32
+	PeerAddr   string
+	ClientAddr string
+	PubKey     *ecdsa.PublicKey
+	Cert       *tls.Certificate
+	CertPEM    []byte
+	PrivKey    *ecdsa.PrivateKey
 }
 
 func usage() {
@@ -182,8 +184,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to unmarshal config: %v\n", err)
 		os.Exit(1)
 	}
-	conf.Privkey = "keys/r1.key"
-	conf.SelfID = 1
+	// conf.Privkey = "keys/r1.key"
+	// conf.SelfID = 1
 
 	// // 	keys\r1.key
 	// privkeyString1 := "26125f32f57a6db41b0996e5fe6ee7857cc1d75fe6e67f14dfb78903e2d0e22b"
@@ -253,51 +255,68 @@ func main() {
 
 	// Certificates
 	certString1 := "-----BEGIN CERTIFICATE-----\nMIIBmjCCAUCgAwIBAgIQGdrdEJSbdGkA0Tc1VEgYQTAKBggqhkjOPQQDAjArMSkw\nJwYDVQQDEyBIb3RTdHVmZiBTZWxmLVNpZ25lZCBDZXJ0aWZpY2F0ZTAeFw0yMTAx\nMTMxMTExMzJaFw0zMTAxMTMxMTExMzJaMCsxKTAnBgNVBAMTIEhvdFN0dWZmIFNl\nbGYtU2lnbmVkIENlcnRpZmljYXRlMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE\nyaKwozY7C9LL4CAGyuY3gQvHrysukW2YuGfGHvgumwRANtalltLIWEQ5OS2ewsR2\nxastcb/gzUBtyj54Mi1sa6NGMEQwDgYDVR0PAQH/BAQDAgWgMBMGA1UdJQQMMAoG\nCCsGAQUFBwMBMAwGA1UdEwEB/wQCMAAwDwYDVR0RBAgwBocEfwAAATAKBggqhkjO\nPQQDAgNIADBFAiB2RyAzqIE80aGGtEgEe9k98k7K1x1Q1z41oNEzMHSTmAIhAPJD\nRvgWsBp/hqtV2/PZUL+zoqOAoexkotun/5SV5ZdY\n-----END CERTIFICATE-----"
-	certBlock1, _ := pem.Decode([]byte(certString1))
-	certBytes1 := certBlock1.Bytes
-	cert1, _ := tls.X509KeyPair(certBytes1, privkeyPEM1)
+	// certBlock1, _ := pem.Decode([]byte(certString1))
+	// certBytes1 := certBlock1.Bytes
+	certPEM1 := []byte(certString1)
+	cert1, _ := tls.X509KeyPair(certPEM1, privkeyPEM1)
 
 	certString2 := "-----BEGIN CERTIFICATE-----\nMIIBmjCCAUCgAwIBAgIQC2t9rKAzWVtTDdJnDInLHDAKBggqhkjOPQQDAjArMSkw\nJwYDVQQDEyBIb3RTdHVmZiBTZWxmLVNpZ25lZCBDZXJ0aWZpY2F0ZTAeFw0yMTAx\nMTMxMTExMzJaFw0zMTAxMTMxMTExMzJaMCsxKTAnBgNVBAMTIEhvdFN0dWZmIFNl\nbGYtU2lnbmVkIENlcnRpZmljYXRlMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE\nitP7/gomqGK/TSgALUpy+MO9N/n1vzyHYXvdwPRFPOyS79UEJIYfNCRyex+TRmtB\n+jwwo1A+x7hCdk2azaF7FKNGMEQwDgYDVR0PAQH/BAQDAgWgMBMGA1UdJQQMMAoG\nCCsGAQUFBwMBMAwGA1UdEwEB/wQCMAAwDwYDVR0RBAgwBocEfwAAATAKBggqhkjO\nPQQDAgNIADBFAiAYQV75FDVJJVgjm6WxVV5PhghT4NlF2PRHb4/ATS1QPAIhAOBc\niM4qVWLaB8KlbgMD0pWAFy+l3w0cHPoICEQTySQ+\n-----END CERTIFICATE-----"
-	certBlock2, _ := pem.Decode([]byte(certString2))
-	certBytes2 := certBlock2.Bytes
-	cert2, _ := tls.X509KeyPair(certBytes2, privkeyPEM2)
+	// certBlock2, _ := pem.Decode([]byte(certString2))
+	// certBytes2 := certBlock2.Bytes
+	certPEM2 := []byte(certString2)
+	cert2, _ := tls.X509KeyPair(certPEM2, privkeyPEM2)
 
 	certString3 := "-----BEGIN CERTIFICATE-----\nMIIBmzCCAUGgAwIBAgIRANE1Qm5JZFIqJmOAwduDsiYwCgYIKoZIzj0EAwIwKzEp\nMCcGA1UEAxMgSG90U3R1ZmYgU2VsZi1TaWduZWQgQ2VydGlmaWNhdGUwHhcNMjEw\nMTEzMTExMTMyWhcNMzEwMTEzMTExMTMyWjArMSkwJwYDVQQDEyBIb3RTdHVmZiBT\nZWxmLVNpZ25lZCBDZXJ0aWZpY2F0ZTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IA\nBOkbHAwrGa4zlJ0bqFKzjcj3JEVaKLfqBjxYzQcpywFrU9O8gQj1mFMMzO2Z/iDN\nysgMTddlFWXeIrQpBn5jpQKjRjBEMA4GA1UdDwEB/wQEAwIFoDATBgNVHSUEDDAK\nBggrBgEFBQcDATAMBgNVHRMBAf8EAjAAMA8GA1UdEQQIMAaHBH8AAAEwCgYIKoZI\nzj0EAwIDSAAwRQIhAK0xFL0o7gBFstfJmAvt2k2DYICPzI9JAjmBqMle55T5AiAN\nKcfe5MQ7noWfVkyte60WxWU5Lw2pRDOmIOiG/yXPdg==\n-----END CERTIFICATE-----"
-	certBlock3, _ := pem.Decode([]byte(certString3))
-	certBytes3 := certBlock3.Bytes
-	cert3, _ := tls.X509KeyPair(certBytes3, privkeyPEM3)
+	// certBlock3, _ := pem.Decode([]byte(certString3))
+	// certBytes3 := certBlock3.Bytes
+	certPEM3 := []byte(certString3)
+	cert3, _ := tls.X509KeyPair(certPEM3, privkeyPEM3)
 
 	certString4 := "-----BEGIN CERTIFICATE-----\nMIIBmzCCAUGgAwIBAgIRAP6OtVIpSKXwu9dCxSQUBRcwCgYIKoZIzj0EAwIwKzEp\nMCcGA1UEAxMgSG90U3R1ZmYgU2VsZi1TaWduZWQgQ2VydGlmaWNhdGUwHhcNMjEw\nMTEzMTExMTMyWhcNMzEwMTEzMTExMTMyWjArMSkwJwYDVQQDEyBIb3RTdHVmZiBT\nZWxmLVNpZ25lZCBDZXJ0aWZpY2F0ZTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IA\nBFYIkjm5uPYC78EG6q5zTuu56p0g+4n3mFFkdqN2fuXyzw9ZrBZ/z6LjAXytBKY6\n/zARYhaVQbTPA/g/0ST1SnajRjBEMA4GA1UdDwEB/wQEAwIFoDATBgNVHSUEDDAK\nBggrBgEFBQcDATAMBgNVHRMBAf8EAjAAMA8GA1UdEQQIMAaHBH8AAAEwCgYIKoZI\nzj0EAwIDSAAwRQIgccoJdDly+VUGqkDU7wLjTpwYZJtiwIH3nkRhoaWtcOUCIQDE\nJ78TmegrP+YshLGWWpifGE6lMsKnVNWrccBy6ZXjQA==\n-----END CERTIFICATE-----"
-	certBlock4, _ := pem.Decode([]byte(certString4))
-	certBytes4 := certBlock4.Bytes
-	cert4, _ := tls.X509KeyPair(certBytes4, privkeyPEM4)
+	// certBlock4, _ := pem.Decode([]byte(certString4))
+	// certBytes4 := certBlock4.Bytes
+	certPEM4 := []byte(certString4)
+	cert4, _ := tls.X509KeyPair(certPEM4, privkeyPEM4)
 
 	var setup manualConfig
 
-	setup.SelfID = 1
+	setup.SelfID = uint32(conf.SelfID)
+	setup.servers = make(map[uint32]*servers)
+	setup.servers[1] = &servers{}
 	setup.servers[1].ID = 1
 	setup.servers[1].PeerAddr = "127.0.0.1:13371"
 	setup.servers[1].ClientAddr = "127.0.0.1:23371"
 	setup.servers[1].Cert = &cert1
 	setup.servers[1].PubKey = publicKey1
+	setup.servers[1].PrivKey = privateKey1
+	setup.servers[1].CertPEM = certPEM1
 
+	setup.servers[2] = &servers{}
 	setup.servers[2].ID = 2
 	setup.servers[2].PeerAddr = "127.0.0.1:13372"
 	setup.servers[2].ClientAddr = "127.0.0.1:23372"
 	setup.servers[2].Cert = &cert2
 	setup.servers[2].PubKey = publicKey2
+	setup.servers[2].PrivKey = privateKey2
+	setup.servers[2].CertPEM = certPEM2
 
+	setup.servers[3] = &servers{}
 	setup.servers[3].ID = 3
 	setup.servers[3].PeerAddr = "127.0.0.1:13373"
 	setup.servers[3].ClientAddr = "127.0.0.1:23373"
 	setup.servers[3].Cert = &cert3
 	setup.servers[3].PubKey = publicKey3
+	setup.servers[3].PrivKey = privateKey3
+	setup.servers[3].CertPEM = certPEM3
 
+	setup.servers[4] = &servers{}
 	setup.servers[4].ID = 4
 	setup.servers[4].PeerAddr = "127.0.0.1:13374"
 	setup.servers[4].ClientAddr = "127.0.0.1:23374"
 	setup.servers[4].Cert = &cert4
 	setup.servers[4].PubKey = publicKey4
+	setup.servers[4].PrivKey = privateKey4
+	setup.servers[4].CertPEM = certPEM4
 
 	privkey, err := data.ReadPrivateKeyFile(conf.Privkey)
 	if err != nil {
@@ -305,66 +324,109 @@ func main() {
 		os.Exit(1)
 	}
 
-	var cert *tls.Certificate
-	if conf.TLS {
-		if conf.Cert == "" {
-			for _, replica := range conf.Replicas {
-				if replica.ID == conf.SelfID {
-					conf.Cert = replica.Cert
-				}
-			}
-		}
-		certB, err := data.ReadCertFile(conf.Cert)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to read certificate: %v\n", err)
-			os.Exit(1)
-		}
-		// read in the private key again, but in PEM format
-		pkPEM, err := ioutil.ReadFile(conf.Privkey)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to read private key: %v\n", err)
-			os.Exit(1)
-		}
+	// var cert *tls.Certificate
+	// if conf.TLS {
+	// 	if conf.Cert == "" {
+	// 		for _, replica := range conf.Replicas {
+	// 			if replica.ID == conf.SelfID {
+	// 				conf.Cert = replica.Cert
+	// 			}
+	// 		}
+	// 	}
+	// 	certB, err := data.ReadCertFile(conf.Cert)
+	// 	if err != nil {
+	// 		fmt.Fprintf(os.Stderr, "Failed to read certificate: %v\n", err)
+	// 		os.Exit(1)
+	// 	}
+	// 	// read in the private key again, but in PEM format
+	// 	pkPEM, err := ioutil.ReadFile(conf.Privkey)
+	// 	if err != nil {
+	// 		fmt.Fprintf(os.Stderr, "Failed to read private key: %v\n", err)
+	// 		os.Exit(1)
+	// 	}
 
-		tlsCert, err := tls.X509KeyPair(certB, pkPEM)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse certificate: %v\n", err)
-			os.Exit(1)
-		}
-		cert = &tlsCert
-	}
+	// 	tlsCert, err := tls.X509KeyPair(certB, pkPEM)
+	// 	if err != nil {
+	// 		fmt.Fprintf(os.Stderr, "Failed to parse certificate: %v\n", err)
+	// 		os.Exit(1)
+	// 	}
+	// 	cert = &tlsCert
+
+	// 	// fmt.Println("Private KEY PEM")
+	// 	// fmt.Println(privkeyPEM1)
+	// 	// fmt.Println(pkPEM)
+	// }
 
 	var clientAddress string
 
-	replicaConfig := config.NewConfig(conf.SelfID, privkey, cert)
-	replicaConfig.BatchSize = 4 //conf.BatchSize
-	for _, r := range conf.Replicas {
-		key, err := data.ReadPublicKeyFile(r.Pubkey)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to read public key file '%s': %v\n", r.Pubkey, err)
-			os.Exit(1)
-		}
+	selfPrivkey := setup.servers[setup.SelfID].PrivKey
+	fmt.Fprintf(os.Stderr, "\n Min \n")
+	fmt.Fprintf(os.Stderr, hex.EncodeToString(selfPrivkey.D.Bytes()))
+	fmt.Fprintf(os.Stderr, "\n Ikke min \n")
+	fmt.Fprintf(os.Stderr, hex.EncodeToString(privkey.D.Bytes()))
 
+	// fmt.Fprintf(os.Stderr, hex.EncodeToString(cert.Certificate[0]))
+	// fmt.Fprintf(os.Stderr, hex.EncodeToString(cert1.Certificate[0]))
+
+	replicaConfig := config.NewConfig(config.ReplicaID(setup.SelfID), selfPrivkey, &cert1)
+	// replicaConfig := config.NewConfig(config.ReplicaID(setup.SelfID), privateKey1, &cert1) //&cert1)
+
+	// replicaConfig.BatchSize = conf.BatchSize
+	// for _, r := range conf.Replicas {
+	// 	key, err := data.ReadPublicKeyFile(r.Pubkey)
+	// 	if err != nil {
+	// 		fmt.Fprintf(os.Stderr, "Failed to read public key file '%s': %v\n", r.Pubkey, err)
+	// 		os.Exit(1)
+	// 	}
+
+	// 	if conf.TLS {
+	// 		certB, err := data.ReadCertFile(r.Cert)
+	// 		if err != nil {
+	// 			fmt.Fprintf(os.Stderr, "Failed to read certificate: %v\n", err)
+	// 			os.Exit(1)
+	// 		}
+	// 		if !replicaConfig.CertPool.AppendCertsFromPEM(certB) {
+	// 			fmt.Fprintf(os.Stderr, "Failed to parse certificate\n")
+	// 		}
+	// 	}
+
+	// 	// fmt.Println("Addr")
+	// 	// fmt.Println(r.PeerAddr)
+	// 	info := &config.ReplicaInfo{
+	// 		ID:      r.ID,
+	// 		Address: r.PeerAddr,
+	// 		PubKey:  key,
+	// 	}
+
+	// 	if r.ID == conf.SelfID {
+	// 		// override own addresses if set
+	// 		if conf.ClientAddr != "" {
+	// 			clientAddress = conf.ClientAddr
+	// 		} else {
+	// 			clientAddress = r.ClientAddr
+	// 		}
+	// 		if conf.PeerAddr != "" {
+	// 			info.Address = conf.PeerAddr
+	// 		}
+	// 	}
+
+	// 	replicaConfig.Replicas[r.ID] = info
+	// }
+
+	replicaConfig.BatchSize = conf.BatchSize
+	for _, r := range setup.servers {
 		if conf.TLS {
-			certB, err := data.ReadCertFile(r.Cert)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to read certificate: %v\n", err)
-				os.Exit(1)
-			}
-			if !replicaConfig.CertPool.AppendCertsFromPEM(certB) {
+			if !replicaConfig.CertPool.AppendCertsFromPEM(r.CertPEM) {
 				fmt.Fprintf(os.Stderr, "Failed to parse certificate\n")
 			}
 		}
-
-		// fmt.Println("Addr")
-		// fmt.Println(r.PeerAddr)
 		info := &config.ReplicaInfo{
-			ID:      r.ID,
+			ID:      config.ReplicaID(r.ID),
 			Address: r.PeerAddr,
-			PubKey:  key,
+			PubKey:  r.PubKey,
 		}
 
-		if r.ID == conf.SelfID {
+		if r.ID == setup.SelfID {
 			// override own addresses if set
 			if conf.ClientAddr != "" {
 				clientAddress = conf.ClientAddr
@@ -376,18 +438,25 @@ func main() {
 			}
 		}
 
-		replicaConfig.Replicas[r.ID] = info
+		replicaConfig.Replicas[config.ReplicaID(r.ID)] = info
 	}
+
 	replicaConfig.QuorumSize = len(replicaConfig.Replicas) - (len(replicaConfig.Replicas)-1)/3
 
-	fmt.Println(cert)
-	fmt.Println(cert1)
+	// fmt.Println("Certificate")
+	// fmt.Println(cert)
+	// fmt.Println(cert1)
 
-	fmt.Println(replicaConfig.Replicas[1].PubKey)
-	fmt.Println(publicKey1)
+	// fmt.Println("Public KEY")
+	// fmt.Println(replicaConfig.Replicas[1].PubKey)
+	// fmt.Println(publicKey1)
 
-	fmt.Println()
-	fmt.Println()
+	// fmt.Println("Private KEY")
+	// fmt.Println(privkey)
+	// fmt.Println(privateKey1)
+	// fmt.Println(privateKey2)
+	// fmt.Println(privateKey3)
+	// fmt.Println(privateKey4)
 
 	// fmt.Println(replicaConfig.Replicas[1].Address)
 	srv := newHotStuffServer(&conf, replicaConfig)
