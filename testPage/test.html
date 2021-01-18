@@ -4,9 +4,6 @@
 		<script src="wasm_exec.js"></script>
 		<script>
 			const go = new Go();
-			WebAssembly.instantiateStreaming(fetch("client.wasm"), go.importObject).then((result) => {
-				go.run(result.instance);
-			});
 			WebAssembly.instantiateStreaming(fetch("client.wasm"), go.importObject).then(
 				result => {
           			mod = result.module;
