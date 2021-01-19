@@ -20,6 +20,8 @@
 	</head>
 	<body>
 		<h1>HotStuff WASM Server</h1>
-		<button onClick="run();" id="runButton" disabled>Run</button>
+		    Self-ID:<input type="number" id="self-id" step="1" min="1" max="4" name="Server ID">
+			<button onClick="GetSelfID('self-id');" id="idButton">Assign</button>
+			<button onClick="run();" id="runButton" disabled>Run</button>
 	</body>
 </html>
