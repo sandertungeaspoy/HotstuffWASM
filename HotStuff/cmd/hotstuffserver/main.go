@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"log"
@@ -15,9 +14,11 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"runtime/trace"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"syscall/js"
 	"time"
 
 	"github.com/felixge/fgprof"
@@ -26,8 +27,9 @@ import (
 	"github.com/relab/hotstuff/config"
 	"github.com/relab/hotstuff/data"
 	"github.com/relab/hotstuff/pacemaker"
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
+
+	// "github.com/spf13/pflag"
+	// "github.com/spf13/viper"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -82,43 +84,58 @@ func usage() {
 	fmt.Println("Loads configuration from ./hotstuff.toml and file specified by --config")
 	fmt.Println()
 	fmt.Println("Options:")
-	pflag.PrintDefaults()
+	// pflag.PrintDefaults()
 }
 
+var serverID uint32
+
 func main() {
-	pflag.Usage = usage
+	// pflag.Usage = usage
+
+	fmt.Println("Initializing")
+	registerCallbacks()
+
+	serverID = uint32(0)
+	for {
+		if serverID != 0 {
+			break
+		}
+		fmt.Print("Sleeping ZzZ ID: ")
+		fmt.Println(serverID)
+		time.Sleep(1 * time.Second)
+	}
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	// some configuration options can be set using flags
-	help := pflag.BoolP("help", "h", false, "Prints this text.")
-	configFile := pflag.String("config", "", "The path to the config file")
-	cpuprofile := pflag.String("cpuprofile", "", "File to write CPU profile to")
-	memprofile := pflag.String("memprofile", "", "File to write memory profile to")
-	fullprofile := pflag.String("fullprofile", "", "File to write fgprof profile to")
-	traceFile := pflag.String("trace", "", "File to write execution trace to")
-	pflag.Uint32("self-id", 0, "The id for this replica.")
-	pflag.Int("view-change", 100, "How many views before leader change with round-robin pacemaker")
-	pflag.Int("batch-size", 100, "How many commands are batched together for each proposal")
-	pflag.Int("view-timeout", 1000, "How many milliseconds before a view is timed out")
-	pflag.String("privkey", "", "The path to the private key file")
-	pflag.String("cert", "", "Path to the certificate")
-	pflag.Bool("print-commands", false, "Commands will be printed to stdout")
-	pflag.Bool("print-throughput", false, "Throughput measurements will be printed stdout")
-	pflag.Int("interval", 1000, "Throughput measurement interval in milliseconds")
-	pflag.Bool("tls", false, "Enable TLS")
-	pflag.String("client-listen", "", "Override the listen address for the client server")
-	pflag.String("peer-listen", "", "Override the listen address for the replica (peer) server")
-	pflag.Parse()
+	// help := false     pflag.BoolP("help", "h", false, "Prints this text.")
+	// configFile := ""  pflag.String("config", "", "The path to the config file")
+	cpuprofile := ""  //pflag.String("cpuprofile", "", "File to write CPU profile to")
+	memprofile := ""  //pflag.String("memprofile", "", "File to write memory profile to")
+	fullprofile := "" //pflag.String("fullprofile", "", "File to write fgprof profile to")
+	traceFile := ""   //pflag.String("trace", "", "File to write execution trace to")
+	// pflag.Uint32("self-id", 0, "The id for this replica.")
+	// pflag.Int("view-change", 100, "How many views before leader change with round-robin pacemaker")
+	// pflag.Int("batch-size", 100, "How many commands are batched together for each proposal")
+	// pflag.Int("view-timeout", 1000, "How many milliseconds before a view is timed out")
+	// pflag.String("privkey", "", "The path to the private key file")
+	// pflag.String("cert", "", "Path to the certificate")
+	// pflag.Bool("print-commands", false, "Commands will be printed to stdout")
+	// pflag.Bool("print-throughput", false, "Throughput measurements will be printed stdout")
+	// pflag.Int("interval", 1000, "Throughput measurement interval in milliseconds")
+	// pflag.Bool("tls", false, "Enable TLS")
+	// pflag.String("client-listen", "", "Override the listen address for the client server")
+	// pflag.String("peer-listen", "", "Override the listen address for the replica (peer) server")
+	// pflag.Parse()
 
-	if *help {
-		pflag.Usage()
-		os.Exit(0)
-	}
+	// if *help {
+	// 	pflag.Usage()
+	// 	os.Exit(0)
+	// }
 
-	if *cpuprofile != "" {
-		f, err := os.Create(*cpuprofile)
+	if cpuprofile != "" {
+		f, err := os.Create(cpuprofile)
 		if err != nil {
 			log.Fatal("Could not create CPU profile: ", err)
 		}
@@ -129,8 +146,8 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	if *fullprofile != "" {
-		f, err := os.Create(*fullprofile)
+	if fullprofile != "" {
+		f, err := os.Create(fullprofile)
 		if err != nil {
 			log.Fatal("Could not create fgprof profile: ", err)
 		}
@@ -145,8 +162,8 @@ func main() {
 		}()
 	}
 
-	if *traceFile != "" {
-		f, err := os.Create(*traceFile)
+	if traceFile != "" {
+		f, err := os.Create(traceFile)
 		if err != nil {
 			log.Fatal("Could not create trace file: ", err)
 		}
@@ -157,33 +174,54 @@ func main() {
 		defer trace.Stop()
 	}
 
-	viper.BindPFlags(pflag.CommandLine)
+	// viper.BindPFlags(pflag.CommandLine)
 
 	// read main config file in working dir
-	viper.SetConfigName("hotstuff")
-	viper.AddConfigPath(".")
-	err := viper.ReadInConfig()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to read config: %v\n", err)
-		os.Exit(1)
-	}
+	// viper.SetConfigName("hotstuff")
+	// viper.AddConfigPath(".")
+	// err := viper.ReadInConfig()
+	// if err != nil {
+	// 	fmt.Fprintf(os.Stderr, "Failed to read config: %v\n", err)
+	// 	os.Exit(1)
+	// }
 
 	// read secondary config file
-	if *configFile != "" {
-		viper.SetConfigFile(*configFile)
-		err = viper.MergeInConfig()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to read secondary config file: %v\n", err)
-			os.Exit(1)
-		}
-	}
+	// if *configFile != "" {
+	// 	viper.SetConfigFile(*configFile)
+	// 	err = viper.MergeInConfig()
+	// 	if err != nil {
+	// 		fmt.Fprintf(os.Stderr, "Failed to read secondary config file: %v\n", err)
+	// 		os.Exit(1)
+	// 	}
+	// }
 
 	var conf options
-	err = viper.Unmarshal(&conf)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to unmarshal config: %v\n", err)
-		os.Exit(1)
-	}
+
+	// conf.BatchSize =
+	// conf.Cert =
+	// conf.Privkey =
+	conf.SelfID = config.ReplicaID(serverID)
+	conf.PmType = "fixed"
+	conf.LeaderID = 1
+	conf.Schedule = make([]config.ReplicaID, 4)
+	conf.Schedule[0] = config.ReplicaID(1)
+	conf.Schedule[1] = config.ReplicaID(2)
+	conf.Schedule[2] = config.ReplicaID(3)
+	conf.Schedule[3] = config.ReplicaID(4)
+	conf.ViewChange = 1
+	// conf.ViewTimeout =
+	// conf.PrintThroughput =
+	// conf.PrintCommands   =
+	// conf.ClientAddr      =
+	// conf.PeerAddr        =
+	// conf.TLS             =
+	// conf.Interval        =
+	// conf.Output          =
+	// err = viper.Unmarshal(&conf)
+	// if err != nil {
+	// 	fmt.Fprintf(os.Stderr, "Failed to unmarshal config: %v\n", err)
+	// 	os.Exit(1)
+	// }
 	// conf.Privkey = "keys/r1.key"
 	// conf.SelfID = 1
 
@@ -318,11 +356,11 @@ func main() {
 	setup.servers[4].PrivKey = privateKey4
 	setup.servers[4].CertPEM = certPEM4
 
-	privkey, err := data.ReadPrivateKeyFile(conf.Privkey)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to read private key file: %v\n", err)
-		os.Exit(1)
-	}
+	// privkey, err := data.ReadPrivateKeyFile(conf.Privkey)
+	// if err != nil {
+	// 	fmt.Fprintf(os.Stderr, "Failed to read private key file: %v\n", err)
+	// 	os.Exit(1)
+	// }
 
 	// var cert *tls.Certificate
 	// if conf.TLS {
@@ -360,10 +398,10 @@ func main() {
 	var clientAddress string
 
 	selfPrivkey := setup.servers[setup.SelfID].PrivKey
-	fmt.Fprintf(os.Stderr, "\n Min \n")
-	fmt.Fprintf(os.Stderr, hex.EncodeToString(selfPrivkey.D.Bytes()))
-	fmt.Fprintf(os.Stderr, "\n Ikke min \n")
-	fmt.Fprintf(os.Stderr, hex.EncodeToString(privkey.D.Bytes()))
+	// fmt.Fprintf(os.Stderr, "\n Min \n")
+	// fmt.Fprintf(os.Stderr, hex.EncodeToString(selfPrivkey.D.Bytes()))
+	// fmt.Fprintf(os.Stderr, "\n Ikke min \n")
+	// fmt.Fprintf(os.Stderr, hex.EncodeToString(privkey.D.Bytes()))
 
 	// fmt.Fprintf(os.Stderr, hex.EncodeToString(cert.Certificate[0]))
 	// fmt.Fprintf(os.Stderr, hex.EncodeToString(cert1.Certificate[0]))
@@ -413,7 +451,7 @@ func main() {
 	// 	replicaConfig.Replicas[r.ID] = info
 	// }
 
-	replicaConfig.BatchSize = conf.BatchSize
+	replicaConfig.BatchSize = len(setup.servers)
 	for _, r := range setup.servers {
 		if conf.TLS {
 			if !replicaConfig.CertPool.AppendCertsFromPEM(r.CertPEM) {
@@ -460,7 +498,7 @@ func main() {
 
 	// fmt.Println(replicaConfig.Replicas[1].Address)
 	srv := newHotStuffServer(&conf, replicaConfig)
-	err = srv.Start(clientAddress)
+	err := srv.Start(clientAddress)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to start HotStuff: %v\n", err)
 		os.Exit(1)
@@ -470,8 +508,8 @@ func main() {
 	fmt.Fprintf(os.Stderr, "Exiting...\n")
 	srv.Stop()
 
-	if *memprofile != "" {
-		f, err := os.Create(*memprofile)
+	if memprofile != "" {
+		f, err := os.Create(memprofile)
 		if err != nil {
 			log.Fatal("could not create memory profile: ", err)
 		}
@@ -619,4 +657,29 @@ func (srv *hotstuffServer) onExec() {
 			srv.mut.Unlock()
 		}
 	}
+}
+
+func GetOutboundIP() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr.IP
+}
+
+func GetSelfID(this js.Value, i []js.Value) interface{} {
+	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
+
+	selfID, _ := strconv.ParseUint(value1, 10, 32)
+	serverID = uint32(selfID)
+	fmt.Println(serverID)
+	return nil
+}
+
+func registerCallbacks() {
+	js.Global().Set("GetSelfID", js.FuncOf(GetSelfID))
 }
