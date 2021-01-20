@@ -10,6 +10,7 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/google/gofuzz v1.1.1-0.20200604201612-c04b05f3adfa
 	github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99 // indirect
+	github.com/klauspost/compress v1.11.7 // indirect
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
 	github.com/pelletier/go-toml v1.8.0 // indirect
 	github.com/relab/gorums v0.2.1-0.20200712223440-c8898b990cd6
@@ -29,4 +30,5 @@ require (
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/ini.v1 v1.57.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
+	nhooyr.io/websocket v1.8.6
 )

@@ -18,10 +18,10 @@
 __debug_bin
 
 # binaries
-cmd/hotstuffkeygen/hotstuffkeygen
-cmd/hotstuffclient/hotstuffclient
-cmd/hotstuffserver/hotstuffserver
-cmd/plot/plot
+hotstuff/cmd/hotstuffkeygen/hotstuffkeygen
+hotstuff/cmd/hotstuffclient/hotstuffclient
+hotstuff/cmd/hotstuffserver/hotstuffserver
+hotstuff/cmd/plot/plot
 
 # other
 keys/
