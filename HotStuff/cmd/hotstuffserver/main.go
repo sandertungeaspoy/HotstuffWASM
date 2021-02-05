@@ -322,8 +322,8 @@ func main() {
 	setup.servers = make(map[uint32]*servers)
 	setup.servers[1] = &servers{}
 	setup.servers[1].ID = 1
-	setup.servers[1].PeerAddr = "127.0.0.1:13371"
-	setup.servers[1].ClientAddr = "127.0.0.1:23371"
+	setup.servers[1].PeerAddr = "127.0.0.1:1371"
+	setup.servers[1].ClientAddr = "127.0.0.1:2371"
 	setup.servers[1].Cert = &cert1
 	setup.servers[1].PubKey = publicKey1
 	setup.servers[1].PrivKey = privateKey1
@@ -331,8 +331,8 @@ func main() {
 
 	setup.servers[2] = &servers{}
 	setup.servers[2].ID = 2
-	setup.servers[2].PeerAddr = "127.0.0.1:13372"
-	setup.servers[2].ClientAddr = "127.0.0.1:23372"
+	setup.servers[2].PeerAddr = "127.0.0.1:1372"
+	setup.servers[2].ClientAddr = "127.0.0.1:2372"
 	setup.servers[2].Cert = &cert2
 	setup.servers[2].PubKey = publicKey2
 	setup.servers[2].PrivKey = privateKey2
@@ -340,8 +340,8 @@ func main() {
 
 	setup.servers[3] = &servers{}
 	setup.servers[3].ID = 3
-	setup.servers[3].PeerAddr = "127.0.0.1:13373"
-	setup.servers[3].ClientAddr = "127.0.0.1:23373"
+	setup.servers[3].PeerAddr = "127.0.0.1:1373"
+	setup.servers[3].ClientAddr = "127.0.0.1:2373"
 	setup.servers[3].Cert = &cert3
 	setup.servers[3].PubKey = publicKey3
 	setup.servers[3].PrivKey = privateKey3
@@ -349,8 +349,8 @@ func main() {
 
 	setup.servers[4] = &servers{}
 	setup.servers[4].ID = 4
-	setup.servers[4].PeerAddr = "127.0.0.1:13374"
-	setup.servers[4].ClientAddr = "127.0.0.1:23374"
+	setup.servers[4].PeerAddr = "127.0.0.1:1374"
+	setup.servers[4].ClientAddr = "127.0.0.1:2374"
 	setup.servers[4].Cert = &cert4
 	setup.servers[4].PubKey = publicKey4
 	setup.servers[4].PrivKey = privateKey4
