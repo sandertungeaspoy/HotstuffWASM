@@ -11,6 +11,7 @@ import (
 	"log"
 	"math/big"
 	"net"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -73,14 +74,17 @@ func New(conf *config.ReplicaConfig, pacemaker Pacemaker, tls bool, connectTimeo
 func (hs *HotStuff) Start() error {
 
 	addr := hs.Config.Replicas[hs.Config.ID].Address
+	fmt.Fprintf(os.Stderr, addr)
 	err := hs.startServer(addr)
 	if err != nil {
 		return fmt.Errorf("Failed to start GRPC Server: %w", err)
 	}
+	fmt.Fprintf(os.Stderr, "Not stuck on StartServer")
 	err = hs.startClient(hs.connectTimeout)
 	if err != nil {
 		return fmt.Errorf("Failed to start GRPC Clients: %w", err)
 	}
+	fmt.Fprintf(os.Stderr, "Not stuck on startClient")
 	return nil
 }
 
@@ -129,12 +133,13 @@ func (hs *HotStuff) startClient(connectTimeout time.Duration) error {
 
 	mgrOpts = append(mgrOpts, proto.WithGrpcDialOptions(grpcOpts...))
 
+	fmt.Fprintf(os.Stderr, "Before manager")
 	mgr, err := proto.NewManager(mgrOpts...)
 	if err != nil {
 		return fmt.Errorf("Failed to connect to replicas: %w", err)
 	}
 	hs.manager = mgr
-
+	fmt.Fprintf(os.Stderr, "After manager")
 	for _, node := range mgr.Nodes() {
 		hs.nodes[config.ReplicaID(node.ID())] = node
 	}
@@ -150,6 +155,7 @@ func (hs *HotStuff) startClient(connectTimeout time.Duration) error {
 // startServer runs a new instance of hotstuffServer
 func (hs *HotStuff) startServer(port string) error {
 	lis, err := net.Listen("tcp", port)
+	fmt.Fprintf(os.Stderr, port)
 	if err != nil {
 		return fmt.Errorf("Failed to listen to port %s: %w", port, err)
 	}
@@ -165,7 +171,8 @@ func (hs *HotStuff) startServer(port string) error {
 
 	hs.server = newHotStuffServer(hs, proto.NewGorumsServer(serverOpts...))
 	hs.server.RegisterHotstuffServer(hs.server)
-
+	// grpc.Address = port
+	// fmt.Fprintf(os.Stderr, "Hotstuff port: "+port)
 	go hs.server.Serve(lis)
 	return nil
 }

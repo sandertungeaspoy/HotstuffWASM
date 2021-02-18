@@ -7,6 +7,19 @@ import (
 	context "context"
 	binary "encoding/binary"
 	fmt "fmt"
+	fnv "hash/fnv"
+	log "log"
+	math "math"
+	rand "math/rand"
+	net "net"
+	"os"
+	sort "sort"
+	strconv "strconv"
+	strings "strings"
+	sync "sync"
+	atomic "sync/atomic"
+	time "time"
+
 	empty "github.com/golang/protobuf/ptypes/empty"
 	ordering "github.com/relab/gorums/ordering"
 	trace "golang.org/x/net/trace"
@@ -19,17 +32,6 @@ import (
 	protowire "google.golang.org/protobuf/encoding/protowire"
 	proto "google.golang.org/protobuf/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	fnv "hash/fnv"
-	log "log"
-	math "math"
-	rand "math/rand"
-	net "net"
-	sort "sort"
-	strconv "strconv"
-	strings "strings"
-	sync "sync"
-	atomic "sync/atomic"
-	time "time"
 )
 
 // A Configuration represents a static set of nodes on which quorum remote
@@ -297,7 +299,7 @@ type Manager struct {
 // NewManager attempts to connect to the given set of node addresses and if
 // successful returns a new Manager containing connections to those nodes.
 func NewManager(opts ...ManagerOption) (*Manager, error) {
-
+	fmt.Println("New manager")
 	m := &Manager{
 		lookup:       make(map[uint32]*Node),
 		configs:      make(map[uint32]*Configuration),
@@ -332,12 +334,14 @@ func NewManager(opts ...ManagerOption) (*Manager, error) {
 				return nil, ManagerCreationError(err)
 			}
 			nodeAddrs = append(nodeAddrs, naddr)
+			fmt.Println("Before Create Node")
 			node, err := m.createNode(naddr, id)
 			if err != nil {
 				return nil, ManagerCreationError(err)
 			}
 			m.lookup[node.id] = node
 			m.nodes = append(m.nodes, node)
+			fmt.Println("After create node")
 		}
 
 		// Sort nodes since map iteration is non-deterministic.
@@ -359,7 +363,7 @@ func NewManager(opts ...ManagerOption) (*Manager, error) {
 		title := strings.Join(nodeAddrs, ",")
 		m.eventLog = trace.NewEventLog("gorums.Manager", title)
 	}
-
+	fmt.Println("Before Connect All")
 	if err := m.connectAll(); err != nil {
 		return nil, ManagerCreationError(err)
 	}
@@ -422,6 +426,7 @@ func (m *Manager) connectAll() error {
 			return fmt.Errorf("connect node %s error: %v", node.addr, err)
 		}
 	}
+	fmt.Println("After connect All")
 	return nil
 }
 
@@ -617,10 +622,12 @@ func (n *Node) connect(opts managerOptions) error {
 	var err error
 	ctx, cancel := context.WithTimeout(context.Background(), opts.nodeDialTimeout)
 	defer cancel()
+	fmt.Fprintf(os.Stderr, "Before Dial Context")
 	n.conn, err = grpc.DialContext(ctx, n.addr, opts.grpcDialOpts...)
 	if err != nil {
 		return fmt.Errorf("dialing node failed: %w", err)
 	}
+	fmt.Fprintf(os.Stderr, "After Dial Context")
 	md := opts.metadata.Copy()
 	if opts.perNodeMD != nil {
 		md = metadata.Join(md, opts.perNodeMD(n.id))
@@ -635,6 +642,7 @@ func (n *Node) connect(opts managerOptions) error {
 			return fmt.Errorf("starting stream failed: %w", err)
 		}
 	}
+	fmt.Fprintf(os.Stderr, "Return Connect")
 	return n.connectStream(ctx) // call generated method
 }
 

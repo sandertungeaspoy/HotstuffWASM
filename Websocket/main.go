@@ -86,14 +86,20 @@ func (s echoServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 	return
 	// }
 	ctx, _ := context.WithTimeout(context.Background(), time.Minute)
+	conn := websocket.NetConn(ctx, c, 1)
 	go func() {
 		for {
-			_, msg, err := c.Read(ctx)
+
+			buff := make([]byte, 4096)
+			n, err := conn.Read(buff)
+			res := make([]byte, n)
+			copy(res, buff[:n])
+			// _, msg, err := c.Read(ctx)
 			if err != nil {
 				fmt.Println(err)
 				return
 			}
-			fmt.Println(msg)
+			fmt.Println(res)
 		}
 	}()
 	var (
@@ -104,11 +110,12 @@ func (s echoServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		scanner.Scan()
 		msg := scanner.Text()
 		msg += "\n"
-		writer, err := c.Writer(ctx, 1)
-		fmt.Println([]byte(msg))
-		writer.Write([]byte(msg))
-		writer.Close()
-		fmt.Println("Wrote")
+		// writer, err := c.Writer(ctx, 1)
+		// fmt.Println([]byte(msg))
+		// writer.Write([]byte(msg))
+		// writer.Close()
+		// fmt.Println("Wrote")
+		conn.Write([]byte(msg))
 		if err != nil {
 			fmt.Println(err)
 		}

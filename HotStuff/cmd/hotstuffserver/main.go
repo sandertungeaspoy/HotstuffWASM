@@ -87,7 +87,11 @@ func usage() {
 	// pflag.PrintDefaults()
 }
 
-var serverID uint32
+//ServerID exported to allow for listener workaround
+var ServerID uint32
+
+//Address exported for listener workaround
+var Address string
 
 func main() {
 	// pflag.Usage = usage
@@ -95,15 +99,17 @@ func main() {
 	fmt.Println("Initializing")
 	registerCallbacks()
 
-	serverID = uint32(0)
+	ServerID = uint32(0)
 	for {
-		if serverID != 0 {
+		if ServerID != 0 {
 			break
 		}
 		fmt.Print("Sleeping ZzZ ID: ")
-		fmt.Println(serverID)
+		fmt.Println(ServerID)
 		time.Sleep(1 * time.Second)
 	}
+
+	grpc.ServerID = ServerID
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
@@ -200,7 +206,7 @@ func main() {
 	// conf.BatchSize =
 	// conf.Cert =
 	// conf.Privkey =
-	conf.SelfID = config.ReplicaID(serverID)
+	conf.SelfID = config.ReplicaID(ServerID)
 	conf.PmType = "fixed"
 	conf.LeaderID = 1
 	conf.Schedule = make([]config.ReplicaID, 4)
@@ -467,12 +473,12 @@ func main() {
 		if r.ID == setup.SelfID {
 			// override own addresses if set
 			if conf.ClientAddr != "" {
-				clientAddress = conf.ClientAddr
+				clientAddress = r.ClientAddr
 			} else {
 				clientAddress = r.ClientAddr
 			}
 			if conf.PeerAddr != "" {
-				info.Address = conf.PeerAddr
+				info.Address = r.PeerAddr
 			}
 		}
 
@@ -593,6 +599,9 @@ func (srv *hotstuffServer) Start(address string) error {
 		return err
 	}
 
+	// fmt.Println("Client Address: ")
+	// fmt.Println(address)
+	// grpc.Address = address
 	go srv.gorumsSrv.Serve(lis)
 	go srv.pm.Run(srv.ctx)
 	go srv.onExec()
@@ -675,8 +684,8 @@ func GetSelfID(this js.Value, i []js.Value) interface{} {
 	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
 
 	selfID, _ := strconv.ParseUint(value1, 10, 32)
-	serverID = uint32(selfID)
-	fmt.Println(serverID)
+	ServerID = uint32(selfID)
+	fmt.Println(ServerID)
 	return nil
 }
 

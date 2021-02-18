@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"flag"
 	"fmt"
@@ -11,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -30,11 +30,18 @@ var (
 
 var servers []*http.Server
 
-var connections map[string]net.Conn
+// var connections map[string][]net.Conn
+type connMap struct {
+	mux         sync.Mutex
+	connections map[string]net.Conn
+}
+
+var connections connMap
 
 func main() {
 	servers = make([]*http.Server, 16)
-	connections = make(map[string]net.Conn)
+	// connections = make(map[string][]net.Conn)
+	connections.connections = make(map[string]net.Conn)
 	flag.Parse()
 	log.Printf("listening on %q...", *listen)
 	go func() {
@@ -524,27 +531,131 @@ func main() {
 
 	go func() {
 		for {
-			sigsExit := make(chan os.Signal, 1)
-			signal.Notify(sigsExit, os.Interrupt)
-			select {
-			case <-sigsExit:
-				break
-			}
-			if _, ok := connections["127.0.0.1:13711"]; ok {
-				msg, err := bufio.NewReader(connections["127.0.0.1:13711"]).ReadString('\n')
-				if err != nil {
-					fmt.Println(err)
+			connections.mux.Lock()
+			if _, ok := connections.connections["127.0.0.1:13721"]; ok {
+				conn := connections.connections["127.0.0.1:13721"]
+
+				if _, ok := connections.connections["127.0.0.1:13722"]; ok {
+					conn1 := connections.connections["127.0.0.1:13722"]
+					connections.mux.Unlock()
+					io.Copy(conn1, conn)
 				} else {
-					if _, ok := connections["127.0.0.1:13721"]; ok {
-						fmt.Fprintf(connections["127.0.0.1:13721"], msg)
-					}
-					if _, ok := connections["127.0.0.1:13731"]; ok {
-						fmt.Fprintf(connections["127.0.0.1:13731"], msg)
-					}
-					if _, ok := connections["127.0.0.1:13741"]; ok {
-						fmt.Fprintf(connections["127.0.0.1:13741"], msg)
-					}
+					connections.mux.Unlock()
 				}
+			} else {
+				connections.mux.Unlock()
+			}
+		}
+
+	}()
+
+	// go func() {
+	// 	for {
+	// 		// sigsExit := make(chan os.Signal, 1)
+	// 		// signal.Notify(sigsExit, os.Interrupt)
+	// 		// select {
+	// 		// case <-sigsExit:
+	// 		// 	break
+	// 		// }
+	// 		// fmt.Println(connections)
+	// 		connections.mux.Lock()
+	// 		if _, ok := connections.connections["127.0.0.1:13721"]; ok {
+	// 			conn := connections.connections["127.0.0.1:13721"]
+	// 			conn.SetReadDeadline(time.Now().Add(time.Millisecond * 200))
+	// 			connections.mux.Unlock()
+	// 			buff := make([]byte, 4096)
+	// 			n, err := conn.Read(buff)
+	// 			res := make([]byte, n)
+	// 			copy(res, buff[:n])
+	// 			// msg, err := bufio.NewReader(conn).ReadString('\n')
+	// 			if n > 0 {
+	// 				fmt.Println(res)
+	// 			}
+	// 			if err != nil {
+	// 				// fmt.Println(err)
+	// 			} else {
+	// 				for {
+	// 					connections.mux.Lock()
+	// 					if _, ok := connections.connections["127.0.0.1:13722"]; ok {
+	// 						conn1 := connections.connections["127.0.0.1:13722"]
+	// 						conn1.Write(res)
+	// 						connections.mux.Unlock()
+	// 						break
+	// 						// fmt.Fprintf(connections.connections["127.0.0.1:13721"], msg)
+	// 					}
+	// 					connections.mux.Unlock()
+	// 					// if _, ok := connections.connections["127.0.0.1:13731"]; ok {
+	// 					// 	conn2 := connections.connections["127.0.0.1:13731"]
+	// 					// 	conn2.Write(res)
+	// 					// 	// fmt.Fprintf(connections.connections["127.0.0.1:13731"], msg)
+	// 					// }
+	// 					// if _, ok := connections.connections["127.0.0.1:13741"]; ok {
+	// 					// 	conn3 := connections.connections["127.0.0.1:13741"]
+	// 					// 	conn3.Write(res)
+	// 					// 	// fmt.Fprintf(connections.connections["127.0.0.1:13741"], msg)
+	// 					// }
+
+	// 				}
+
+	// 			}
+	// 		} else {
+	// 			connections.mux.Unlock()
+	// 		}
+	// 	}
+
+	// }()
+
+	go func() {
+		for {
+			// sigsExit := make(chan os.Signal, 1)
+			// signal.Notify(sigsExit, os.Interrupt)
+			// select {
+			// case <-sigsExit:
+			// 	break
+			// }
+			// fmt.Println(connections)
+			connections.mux.Lock()
+			if _, ok := connections.connections["127.0.0.1:13722"]; ok {
+				conn := connections.connections["127.0.0.1:13722"]
+				conn.SetReadDeadline(time.Now().Add(time.Millisecond * 200))
+				connections.mux.Unlock()
+				buff := make([]byte, 4096)
+				n, err := conn.Read(buff)
+				res := make([]byte, n)
+				copy(res, buff[:n])
+				// msg, err := bufio.NewReader(conn).ReadString('\n')
+				if n > 0 {
+					fmt.Println(res)
+				}
+				if err != nil {
+					// fmt.Println(err)
+				} else {
+					for {
+						connections.mux.Lock()
+						if _, ok := connections.connections["127.0.0.1:13721"]; ok {
+							conn1 := connections.connections["127.0.0.1:13721"]
+							conn1.Write(res)
+							connections.mux.Unlock()
+							break
+							// fmt.Fprintf(connections.connections["127.0.0.1:13721"], msg)
+						}
+						connections.mux.Unlock()
+						// if _, ok := connections.connections["127.0.0.1:13731"]; ok {
+						// 	conn2 := connections.connections["127.0.0.1:13731"]
+						// 	conn2.Write(res)
+						// 	// fmt.Fprintf(connections.connections["127.0.0.1:13731"], msg)
+						// }
+						// if _, ok := connections.connections["127.0.0.1:13741"]; ok {
+						// 	conn3 := connections.connections["127.0.0.1:13741"]
+						// 	conn3.Write(res)
+						// 	// fmt.Fprintf(connections.connections["127.0.0.1:13741"], msg)
+						// }
+
+					}
+
+				}
+			} else {
+				connections.mux.Unlock()
 			}
 		}
 
@@ -552,21 +663,55 @@ func main() {
 
 	go func() {
 		for {
-			sigsExit := make(chan os.Signal, 1)
-			signal.Notify(sigsExit, os.Interrupt)
-			select {
-			case <-sigsExit:
-				break
-			}
-			if _, ok := connections["127.0.0.1:13721"]; ok {
-				msg, err := bufio.NewReader(connections["127.0.0.1:13721"]).ReadString('\n')
-				if err != nil {
-					fmt.Println(err)
-				} else {
-					if _, ok := connections["127.0.0.1:13712"]; ok {
-						fmt.Fprintf(connections["127.0.0.1:13712"], msg)
-					}
+			// sigsExit := make(chan os.Signal, 1)
+			// signal.Notify(sigsExit, os.Interrupt)
+			// select {
+			// case <-sigsExit:
+			// 	break
+			// }
+			// fmt.Println(connections)
+			connections.mux.Lock()
+			if _, ok := connections.connections["127.0.0.1:13711"]; ok {
+				conn := connections.connections["127.0.0.1:13711"]
+				conn.SetReadDeadline(time.Now().Add(time.Millisecond * 200))
+				connections.mux.Unlock()
+				buff := make([]byte, 4096)
+				n, err := conn.Read(buff)
+				res := make([]byte, n)
+				copy(res, buff[:n])
+				// msg, err := bufio.NewReader(conn).ReadString('\n')
+				if n > 0 {
+					fmt.Println(res)
 				}
+				if err != nil {
+					// fmt.Println(err)
+				} else {
+					for {
+						connections.mux.Lock()
+						if _, ok := connections.connections["127.0.0.1:13712"]; ok {
+							conn1 := connections.connections["127.0.0.1:13712"]
+							conn1.Write(res)
+							connections.mux.Unlock()
+							break
+							// fmt.Fprintf(connections.connections["127.0.0.1:13721"], msg)
+						}
+						connections.mux.Unlock()
+						// if _, ok := connections.connections["127.0.0.1:13731"]; ok {
+						// 	conn2 := connections.connections["127.0.0.1:13731"]
+						// 	conn2.Write(res)
+						// 	// fmt.Fprintf(connections.connections["127.0.0.1:13731"], msg)
+						// }
+						// if _, ok := connections.connections["127.0.0.1:13741"]; ok {
+						// 	conn3 := connections.connections["127.0.0.1:13741"]
+						// 	conn3.Write(res)
+						// 	// fmt.Fprintf(connections.connections["127.0.0.1:13741"], msg)
+						// }
+
+					}
+
+				}
+			} else {
+				connections.mux.Unlock()
 			}
 		}
 
@@ -574,65 +719,58 @@ func main() {
 
 	go func() {
 		for {
-			sigsExit := make(chan os.Signal, 1)
-			signal.Notify(sigsExit, os.Interrupt)
-			select {
-			case <-sigsExit:
-				break
-			}
-			if _, ok := connections["127.0.0.1:13731"]; ok {
-				msg, err := bufio.NewReader(connections["127.0.0.1:13731"]).ReadString('\n')
+			// sigsExit := make(chan os.Signal, 1)
+			// signal.Notify(sigsExit, os.Interrupt)
+			// select {
+			// case <-sigsExit:
+			// 	break
+			// }
+			// fmt.Println(connections)
+			connections.mux.Lock()
+			if _, ok := connections.connections["127.0.0.1:13712"]; ok {
+				conn := connections.connections["127.0.0.1:13712"]
+				conn.SetReadDeadline(time.Now().Add(time.Millisecond * 200))
+				connections.mux.Unlock()
+				buff := make([]byte, 4096)
+				n, err := conn.Read(buff)
+				res := make([]byte, n)
+				copy(res, buff[:n])
+				// msg, err := bufio.NewReader(conn).ReadString('\n')
+				if n > 0 {
+					fmt.Println(res)
+				}
 				if err != nil {
-					fmt.Println(err)
+					// fmt.Println(err)
 				} else {
-					if _, ok := connections["127.0.0.1:13712"]; ok {
-						fmt.Fprintf(connections["127.0.0.1:13712"], msg)
+					for {
+						connections.mux.Lock()
+						if _, ok := connections.connections["127.0.0.1:13711"]; ok {
+							conn1 := connections.connections["127.0.0.1:13711"]
+							conn1.Write(res)
+							connections.mux.Unlock()
+							break
+							// fmt.Fprintf(connections.connections["127.0.0.1:13721"], msg)
+						}
+						connections.mux.Unlock()
+						// if _, ok := connections.connections["127.0.0.1:13731"]; ok {
+						// 	conn2 := connections.connections["127.0.0.1:13731"]
+						// 	conn2.Write(res)
+						// 	// fmt.Fprintf(connections.connections["127.0.0.1:13731"], msg)
+						// }
+						// if _, ok := connections.connections["127.0.0.1:13741"]; ok {
+						// 	conn3 := connections.connections["127.0.0.1:13741"]
+						// 	conn3.Write(res)
+						// 	// fmt.Fprintf(connections.connections["127.0.0.1:13741"], msg)
+						// }
+
 					}
+
 				}
+			} else {
+				connections.mux.Unlock()
 			}
 		}
 
-	}()
-
-	go func() {
-		for {
-			sigsExit := make(chan os.Signal, 1)
-			signal.Notify(sigsExit, os.Interrupt)
-			select {
-			case <-sigsExit:
-				break
-			}
-			if _, ok := connections["127.0.0.1:13741"]; ok {
-				msg, err := bufio.NewReader(connections["127.0.0.1:13741"]).ReadString('\n')
-				if err != nil {
-					fmt.Println(err)
-				} else {
-					if _, ok := connections["127.0.0.1:13712"]; ok {
-						fmt.Fprintf(connections["127.0.0.1:13712"], msg)
-					}
-				}
-			}
-		}
-
-	}()
-
-	go func() {
-		for {
-			sigsExit := make(chan os.Signal, 1)
-			signal.Notify(sigsExit, os.Interrupt)
-			select {
-			case <-sigsExit:
-				break
-			}
-			if _, ok := connections["127.0.0.1:13711"]; ok {
-				msg, err := bufio.NewReader(connections["127.0.0.1:13711"]).ReadString('\n')
-				if err != nil {
-					fmt.Println(err)
-				} else {
-					fmt.Fprintf(connections["127.0.0.1:13722"], msg)
-				}
-			}
-		}
 	}()
 
 	for {
@@ -650,23 +788,29 @@ func main() {
 
 func (s wasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// fmt.Println("Failed at ServeHTTP")
+	connections.mux.Lock()
+	defer connections.mux.Unlock()
+	// if _, ok := connections.connections[r.Host]; ok {
+	// 	return
+	// }
 	opts := &websocket.AcceptOptions{OriginPatterns: []string{"*"}, Subprotocols: []string{"*"}}
 	c, err := websocket.Accept(w, r, opts)
 	if err != nil {
 		s.logf("%v", err)
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, _ := context.WithTimeout(context.Background(), time.Minute)
 	conn := websocket.NetConn(ctx, c, 1)
 	fmt.Println("Request \"Addr\": ")
 	fmt.Println(r.Host)
 	dialing := r.Host
 
-	connections[dialing] = conn
+	connections.connections[dialing] = conn
+	// connections[dialing] = append(connections[dialing], conn)
 
-	defer c.Close(websocket.StatusInternalError, "the sky is falling")
-	defer cancel()
-	fmt.Println("Accpted")
+	// defer c.Close(websocket.StatusInternalError, "the sky is falling")
+	// defer cancel()
+	fmt.Println("Accepted")
 }
 
 // echo reads from the WebSocket connection and then writes
