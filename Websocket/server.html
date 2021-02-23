@@ -1,0 +1,147 @@
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<script src="wasm_exec.js"></script>
+		<script>
+            var read = new WebAssembly.Memory({initial:10, maximum:100});
+            var write = new WebAssembly.Memory({initial:10, maximum:100});
+            var readMsg = new String(read.buffer)
+			const go = new Go();
+			WebAssembly.instantiateStreaming(fetch("mem.wasm"), go.importObject, { js: { mem: read , mem: write} }).then(
+				result => {
+          			mod = result.module;
+          			inst = result.instance;
+          			document.getElementById("runButton").disabled = false;
+        		}
+      		);
+
+      		async function run() {
+        		await go.run(inst);
+        		inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
+      		}
+            
+            
+            
+		</script>
+	</head>
+	<body>
+		<h1>HotStuff WASM Server</h1>
+			Self-ID:<input type="number" id="self-id" step="1" min="1" max="4" name="Server ID" value="1">
+			
+			<button onClick="GetSelfID('self-id'); startWebRTC();" id="idButton">Assign</button>
+			Chat:<input type="text" id="text" name="charbox" value="Test">
+            <p id="textbox">This is a test</p>
+			<button onClick="passUint8ArrayToGo();" id="SendButton">Send</button>
+            <button onClick="setUint8ArrayInGo();" id="RecvButton">Receive</button>
+			<button onClick="run();" id="runButton" disabled>Run</button>
+            <button onClick="readMessages();" id="readButton" >ReadMsg</button>
+	</body>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <script>
+
+        var server = { urls: "stun:stun.l.google.com:19302" };
+
+        var dc, pc = new RTCPeerConnection({ iceServers: [server] });
+        pc.ondatachannel = e => dcInit(dc = e.channel);
+        pc.oniceconnectionstatechange = e => log(pc.iceConnectionState);
+
+
+        function dcInit() {
+            dc.onopen = () => log("Chat!");
+            dc.onmessage = e => log(e.data);
+        }
+
+        function createOffer() {
+            dcInit(dc = pc.createDataChannel("chat"));
+            pc.createOffer().then(d => pc.setLocalDescription(d));
+            pc.onicecandidate = e => {
+                if (e.candidate) return;
+                return pc.localDescription.sdp;
+            };
+        };
+
+
+        function createAnswer(offer) {
+            if (pc.signalingState != "stable") return;
+            var desc = new RTCSessionDescription({ type:"offer", offer });
+            pc.setRemoteDescription(desc)
+                .then(() => pc.createAnswer()).then(d => pc.setLocalDescription(d));
+            pc.onicecandidate = e => {
+                if (e.candidate) return;
+                return pc.localDescription.sdp;
+            };
+        };
+
+
+        function startChannel(answer) {
+            if (pc.signalingState != "have-local-offer") return;
+            answer.disabled = true;
+            var desc = new RTCSessionDescription({ type:"answer", answer });
+            pc.setRemoteDescription(desc);
+        };
+
+        function sendData(data) {
+            dc.send(data)
+        };
+
+        function startWebRTC() {
+            var id = document.getElementById("self-id").value;
+            if (id == 1) {
+                var offer = createOffer()
+                var ws = new WebSocket("ws://localhost:1337");
+            } else {
+                // Wait for offer
+                var ws = new WebSocket("ws://localhost:1338");
+                answer = createAnswer(recvOffer)
+            }
+            
+
+        }
+
+
+        function setText() {
+            document.getElementById("textbox").innerHTML = readMsg;
+        }
+          
+        function passUint8ArrayToGo(){
+
+            array_to_pass = new Uint8Array([0, 9, 21, 32])
+        
+            console.log(array_to_pass)
+        
+            PassUint8ArrayToGo(array_to_pass)
+        }
+        
+        function setUint8ArrayInGo(){
+
+        array_to_set = new Uint8Array()
+    
+        SetUint8ArrayInGo(array_to_set)
+    
+        console.log(array_to_set)
+    
+        array_to_set = new Uint8Array(4)
+    
+        SetUint8ArrayInGo(array_to_set)
+    
+        console.log(array_to_set)
+        }
+        
+        const incomingMessages = document.querySelector('#incomingMessages');
+
+        const peerConnection = new RTCPeerConnection(configuration);
+        const dataChannel = peerConnection.createDataChannel();
+
+        // Append new messages to the box of incoming messages
+        dataChannel.addEventListener('message', event => {
+            const message = event.data;
+            incomingMessages.textContent += message + '\n';
+        });
+
+        function readMessages(){
+            console.log(incomingMessages.textContent)
+        }
+
+
+    </script>
+</html>
