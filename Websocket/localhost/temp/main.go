@@ -9,7 +9,6 @@ import (
 
 var serverID uint32
 var msgChan chan string
-var msgs [][]byte
 
 func main() {
 	fmt.Println("TEST!")
@@ -28,13 +27,6 @@ func main() {
 		fmt.Println(serverID)
 		time.Sleep(1 * time.Second)
 	}
-
-	msgs[0] = []byte("Hello World")
-	msgs[1] = []byte("Hello World 2")
-	msgs[2] = []byte("Hello World 3")
-	msgs[3] = []byte("Hello World 4")
-	msgs[4] = []byte("Hello World 5")
-
 	<-msgChan
 	// 	go func() {
 	// 		for {
@@ -88,24 +80,7 @@ func PassUint8ArrayToGo(this js.Value, args []js.Value) interface{} {
 
 func SetUint8ArrayInGo(this js.Value, args []js.Value) interface{} {
 
-	var msg []byte
-
-	msg, msgs = msgs[0], msgs[1:]
-
-	_ = js.CopyBytesToJS(args[0], msg)
-
-	return nil
-}
-
-func GetArraySize(this js.Value, args []js.Value) interface{} {
-
-	size := make([]byte, 10)
-
-	msgSize := []byte(strconv.Itoa(len(msgs[0])))
-
-	copy(size, msgSize)
-
-	_ = js.CopyBytesToJS(args[0], size)
+	_ = js.CopyBytesToJS(args[0], []byte{0, 9, 21, 32})
 
 	return nil
 }
@@ -116,5 +91,4 @@ func registerCallbacks() {
 
 	js.Global().Set("PassUint8ArrayToGo", js.FuncOf(PassUint8ArrayToGo))
 	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
-	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))
 }

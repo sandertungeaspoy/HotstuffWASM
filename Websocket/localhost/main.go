@@ -27,7 +27,7 @@ type wasmServer struct {
 }
 
 var (
-	listen = flag.String("listen", "localhost:8080", "listen address")
+	listen = flag.String("listen", "127.0.0.1:8080", "listen address")
 	dir    = flag.String("dir", ".", "directory to serve")
 )
 
@@ -49,12 +49,12 @@ func main() {
 	flag.Parse()
 	log.Printf("listening on %q...", *listen)
 	go func() {
-		err := http.ListenAndServe("localhost:8080", http.FileServer(http.Dir(*dir)))
+		err := http.ListenAndServe("127.0.0.1:8080", http.FileServer(http.Dir(*dir)))
 		log.Fatalln(err)
 	}()
 
 	go func() {
-		l, err := net.Listen("tcp", "localhost:13371")
+		l, err := net.Listen("tcp", "127.0.0.1:13371")
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -84,7 +84,7 @@ func main() {
 	}()
 
 	go func() {
-		l2, err2 := net.Listen("tcp", "localhost:13372")
+		l2, err2 := net.Listen("tcp", "127.0.0.1:13372")
 		if err2 != nil {
 			fmt.Println(err2)
 		}
@@ -114,7 +114,7 @@ func main() {
 	}()
 
 	go func() {
-		l3, err3 := net.Listen("tcp", "localhost:13373")
+		l3, err3 := net.Listen("tcp", "127.0.0.1:13373")
 		if err3 != nil {
 			fmt.Println(err3)
 		}
@@ -144,7 +144,7 @@ func main() {
 	}()
 
 	go func() {
-		l4, err4 := net.Listen("tcp", "localhost:13374")
+		l4, err4 := net.Listen("tcp", "127.0.0.1:13374")
 		if err4 != nil {
 			fmt.Println(err4)
 		}
@@ -215,7 +215,6 @@ func (s wasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			connections.offer[r.Host] = msg
 		} else if msgType == "active" {
 			connections.answer[r.Host] = msg
-			break
 		} else if msgType == "recvOffer" {
 			for {
 				time.Sleep(time.Millisecond * 2000)
@@ -252,7 +251,6 @@ func (s wasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					// conn.Write([]byte(connections.offer["localhost:13371"]))
 					connections.mux.Unlock()
 					fmt.Println("breaking")
-
 					break
 				}
 				connections.mux.Unlock()
