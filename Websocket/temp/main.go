@@ -95,8 +95,14 @@ func SetUint8ArrayInGo(this js.Value, args []js.Value) interface{} {
 
 	var msg []byte
 
-	msg, msgsSend = msgsSend[0], msgsSend[1:]
-
+	if len(msgsSend) > 1 {
+		msg, msgsSend = msgsSend[0], msgsSend[1:]
+	} else {
+		msg, msgsSend = msgsSend[0], nil
+	}
+	if msg == nil {
+		return nil
+	}
 	_ = js.CopyBytesToJS(args[0], msg)
 
 	return nil
@@ -106,7 +112,7 @@ func GetArraySize(this js.Value, args []js.Value) interface{} {
 
 	size := make([]byte, 10)
 
-	msgSize := []byte(strconv.Itoa(len(msgs[0])))
+	msgSize := []byte(strconv.Itoa(len(msgsSend[0])))
 
 	copy(size, msgSize)
 
