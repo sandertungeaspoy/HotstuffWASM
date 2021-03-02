@@ -9,10 +9,11 @@ import (
 
 var serverID uint32
 var msgChan chan string
-var msgs [][]byte
+var msgsRecv [][]byte
+var msgsSend [][]byte
 
 func main() {
-	fmt.Println("TEST!")
+	fmt.Println("TESTING!")
 	fmt.Println("This is running in Webassembly!")
 
 	fmt.Println("Initializing")
@@ -29,11 +30,14 @@ func main() {
 		time.Sleep(1 * time.Second)
 	}
 
-	msgs[0] = []byte("Hello World")
-	msgs[1] = []byte("Hello World 2")
-	msgs[2] = []byte("Hello World 3")
-	msgs[3] = []byte("Hello World 4")
-	msgs[4] = []byte("Hello World 5")
+	msgsSend = make([][]byte, 5)
+	msgsRecv = make([][]byte, 5)
+
+	msgsSend[0] = []byte("Hello World")
+	msgsSend[1] = []byte("Hello World 2")
+	msgsSend[2] = []byte("Hello World 3")
+	msgsSend[3] = []byte("Hello World 4")
+	msgsSend[4] = []byte("Hello World 5")
 
 	<-msgChan
 	// 	go func() {
@@ -81,6 +85,7 @@ func PassUint8ArrayToGo(this js.Value, args []js.Value) interface{} {
 
 	_ = js.CopyBytesToGo(received, args[0])
 
+	msgsRecv = append(msgsRecv, received)
 	fmt.Println(received)
 
 	return nil
@@ -90,7 +95,7 @@ func SetUint8ArrayInGo(this js.Value, args []js.Value) interface{} {
 
 	var msg []byte
 
-	msg, msgs = msgs[0], msgs[1:]
+	msg, msgsSend = msgsSend[0], msgsSend[1:]
 
 	_ = js.CopyBytesToJS(args[0], msg)
 

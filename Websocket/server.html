@@ -122,10 +122,13 @@
         
         GetArraySize(arraySize);
         
-        console.log(arraySize);
+        
+        var size = new TextDecoder("utf-8").decode(arraySize);
+        var sizeint = parseInt(size);
+        console.log(size);
 
 
-        array_to_set = new Uint8Array(4);
+        array_to_set = new Uint8Array(sizeint);
     
         SetUint8ArrayInGo(array_to_set);
     
