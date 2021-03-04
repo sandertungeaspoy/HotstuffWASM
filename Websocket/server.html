@@ -51,7 +51,7 @@
 			<button onClick="passUint8ArrayToGo();" id="SendButton">Send</button>
             <button onClick="setUint8ArrayInGo();" id="RecvButton">Receive</button>
 			<button onClick="run();" id="runButton">Run</button>
-            <button onClick="readMessages();" id="readButton" >ReadMsg</button>
+            <button onClick="startTraffic();" id="startButton" >Start Traffic</button>
 	</body>
     
     <!-- <script> 
@@ -109,16 +109,16 @@
             document.getElementById("textbox").innerHTML = readMsg;
         }
           
-        function passUint8ArrayToGo(){
+        function passMsgToGo(val){
 
-            array_to_pass = new Uint8Array([0, 9, 21, 32])
+            var array_to_pass = new Uint8Array(val);
         
             console.log(array_to_pass)
         
             PassUint8ArrayToGo(array_to_pass)
         }
         
-        function setUint8ArrayInGo(){
+        /*function setUint8ArrayInGo(){
 
         arraySize = new Uint8Array(10);
         
@@ -129,25 +129,19 @@
         var sizeint = parseInt(size);
         console.log(size);
 
-
         array_to_set = new Uint8Array(sizeint);
-    
         SetUint8ArrayInGo(array_to_set);
-    
-        sendData(array_to_set);
-        sendData2(array_to_set);
-        sendData3(array_to_set);
-        console.log(array_to_set)
-        }
+        console.log(array_to_set);
+        };*/
 
-    function readWriteMsgs() {
+    function readSendMsgs() {
         var arraySize = new Uint8Array(10);
         GetArraySize(arraySize);
         var size = new TextDecoder("utf-8").decode(arraySize);
         var sizeint = parseInt(size);
 
         var msg = new Uint8Array(sizeint);
-        setUint8ArrayInGo(msg);
+        SetUint8ArrayInGo(msg);
         if (msg.length > 0) {
             if (id == 1){
                 sendData(msg);
@@ -161,10 +155,30 @@
                 sendData3(msg);
             }
         };
-        
-        
-        
-    }
+    };
+
+
+    var intervalReadSendWASM;
+
+    function startTraffic() {
+        intervalReadSendWASM = window.setInterval(function(){
+            readSendMsgs();
+          }, 50);
+    
+        if (id == 1){
+            dc.onmessage() = e => passMsgToGo(e);
+            dc2.onmessage() = e => passMsgToGo(e);
+            dc3.onmessage() = e => passMsgToGo(e);
+        } else if (id == 2) {
+            dc.onmessage() = e => passMsgToGo(e);
+        } else if (id == 3) {
+            dc2.onmessage() = e => passMsgToGo(e);
+        } else if (id == 4) {
+            dc3.onmessage() = e => passMsgToGo(e);
+        }
+    };
+
+
 
     </script>
 </html>
