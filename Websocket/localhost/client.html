@@ -1,0 +1,92 @@
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<script src="wasm_exec.js"></script>
+		<script>
+            var read = new WebAssembly.Memory({initial:10, maximum:100});
+            var write = new WebAssembly.Memory({initial:10, maximum:100});
+            var readMsg = new String(read.buffer)
+			const go = new Go();
+			WebAssembly.instantiateStreaming(fetch("mem.wasm"), go.importObject, { js: { mem: read , mem: write} }).then(
+				result => {
+          			mod = result.module;
+          			inst = result.instance;
+          			document.getElementById("runButton").disabled = false;
+        		}
+      		);
+
+      		async function run() {
+        		await go.run(inst);
+        		inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
+      		}
+            
+            
+		</script>
+	</head>
+	<body>
+		<h1>HotStuff WASM Server</h1>
+			Self-ID:<input type="number" id="self-id" step="1" min="1" max="4" name="Server ID" value="1">
+			
+			<button onClick="GetSelfID('self-id');" id="idButton">Assign</button>
+			Chat:<input type="text" id="text" name="charbox" value="Test">
+            <p id="textbox">This is a test</p>
+			<button onClick="passUint8ArrayToGo();" id="SendButton">Send</button>
+            <button onClick="setUint8ArrayInGo();" id="RecvButton">Receive</button>
+			<button onClick="run();" id="runButton" disabled>Run</button>
+	</body>
+    <script>
+        function setText() {
+            document.getElementById("textbox").innerHTML = readMsg;
+        }
+          
+        function passUint8ArrayToGo(){
+
+            array_to_pass = new Uint8Array([0, 9, 21, 32])
+        
+            console.log(array_to_pass)
+        
+            PassUint8ArrayToGo(array_to_pass)
+        }
+        
+        function setUint8ArrayInGo(){
+
+        array_to_set = new Uint8Array()
+    
+        SetUint8ArrayInGo(array_to_set)
+    
+        console.log(array_to_set)
+    
+        array_to_set = new Uint8Array(4)
+    
+        SetUint8ArrayInGo(array_to_set)
+    
+        console.log(array_to_set)
+        }
+        
+        const messageBox = document.querySelector('#messageBox');
+        const sendButton = document.querySelector('#sendButton');
+        const peerConnection = new RTCPeerConnection(configuration);
+        const dataChannel = peerConnection.createDataChannel();
+
+        
+        // Send a simple text message when we click the button
+        sendButton.addEventListener('click', event => {
+        const message = messageBox.textContent;
+        dataChannel.send(message);
+        })
+        
+        // Enable textarea and button when opened
+        dataChannel.addEventListener('open', event => {
+            messageBox.disabled = false;
+            messageBox.focus();
+            sendButton.disabled = false;
+        });
+        
+        // Disable input when closed
+        dataChannel.addEventListener('close', event => {
+            messageBox.disabled = false;
+            sendButton.disabled = false;
+        });
+
+    </script>
+</html>
