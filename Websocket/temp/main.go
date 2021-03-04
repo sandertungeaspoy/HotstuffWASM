@@ -39,6 +39,23 @@ func main() {
 	msgsSend[3] = []byte("Hello World 4")
 	msgsSend[4] = []byte("Hello World 5")
 
+	go func() {
+		msgsRecv = append(msgsRecv, nil)
+		for {
+			var msg []byte
+			if len(msgsRecv) > 1 {
+
+				msg, msgsRecv = msgsRecv[0], msgsRecv[1:]
+			} else {
+				msg, msgsRecv = msgsRecv[0], nil
+			}
+			if msg != nil {
+				msgsSend = append(msgsSend, msg)
+			}
+
+		}
+	}()
+
 	<-msgChan
 	// 	go func() {
 	// 		for {
