@@ -31,7 +31,8 @@ func main() {
 	}
 
 	msgsSend = make([][]byte, 5)
-	msgsRecv = make([][]byte, 5)
+	msgsRecv = make([][]byte, 1)
+	msgsRecv[0] = nil
 
 	msgsSend[0] = []byte("Hello World")
 	msgsSend[1] = []byte("Hello World 2")
@@ -40,14 +41,14 @@ func main() {
 	msgsSend[4] = []byte("Hello World 5")
 
 	go func() {
-		msgsRecv = append(msgsRecv, nil)
 		for {
+			time.Sleep(time.Millisecond * 500)
 			var msg []byte
 			if len(msgsRecv) > 1 {
-
 				msg, msgsRecv = msgsRecv[0], msgsRecv[1:]
 			} else {
-				msg, msgsRecv = msgsRecv[0], nil
+				msg = msgsRecv[0]
+				msgsRecv[0] = nil
 			}
 			if msg != nil {
 				msgsSend = append(msgsSend, msg)
@@ -115,7 +116,8 @@ func SetUint8ArrayInGo(this js.Value, args []js.Value) interface{} {
 	if len(msgsSend) > 1 {
 		msg, msgsSend = msgsSend[0], msgsSend[1:]
 	} else {
-		msg, msgsSend = msgsSend[0], nil
+		msg = msgsSend[0]
+		msgsSend[0] = nil
 	}
 	if msg == nil {
 		return nil

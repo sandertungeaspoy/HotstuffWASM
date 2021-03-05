@@ -199,6 +199,15 @@ func (s wasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	conn := websocket.NetConn(ctx, c, 1)
+	if strings.Split(r.Host, ":")[1] == "13371" {
+		connections.connections = make(map[string]net.Conn)
+		connections.answer = make(map[string]string)
+		connections.offer = make(map[string]string)
+		fmt.Println("Connection Map reset!")
+		conn.Close()
+		cancel()
+		return
+	}
 	for {
 		msg, err := bufio.NewReader(conn).ReadString('&')
 		fmt.Println(msg)

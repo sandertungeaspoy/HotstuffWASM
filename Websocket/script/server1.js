@@ -32,10 +32,10 @@ function createOffer() {
           case "complete":
             /* gathering has ended */
             offer = pc.localDescription.sdp;
-            console.log(offer);
+            // console.log(offer);
             offer += "&"
             ws.send(offer);
-            console.log(offer);
+            // console.log(offer);
             ws.send("setup:recvAnswer\n&");
             break;
         }
@@ -72,32 +72,17 @@ function createAnswer() {
             /* gathering has ended */
             if (pc.localDescription.sdp.includes("c=IN IP4 0.0.0.0")) {
                 answer = pc.localDescription.sdp;
-                console.log(answer)
+                // console.log(answer)
                 answer += "&"; 
                 ws.send(answer);
                 ws.close();
             } else {
                 console.log("Retry");
-                console.log(pc.localDescription.sdp);
+                // console.log(pc.localDescription.sdp);
                 restartWebRTC();
             };
         }
         });
-    // pc.onicecandidate = e => {
-    //     console.log(e);
-    //     if (e.candidate == "") {
-    //         console.log(answer);
-    //         if (pc.localDescription.sdp.includes("c=IN IP4 0.0.0.0")) {
-    //             answer = pc.localDescription.sdp;
-    //             answer += "&"; 
-    //             ws.send(answer);
-    //             return;
-    //         } else {
-    //             console.log("Retry");
-    //             createAnswer();
-    //         }
-    //     }
-    // };
 };
 
 
@@ -124,7 +109,7 @@ function startWebRTC() {
         };
         ws.onmessage = function (evt) {
             answer = evt.data;
-            console.log(answer);
+            // console.log(answer);
             startChannel();
             
         }
@@ -137,7 +122,7 @@ function startWebRTC() {
             };
         ws.onmessage = function (evt) { 
             offer = evt.data;
-            console.log(offer);
+            // console.log(offer);
             createAnswer();   
         };
     }

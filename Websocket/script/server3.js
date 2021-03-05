@@ -31,10 +31,10 @@ function createOffer3() {
             case "complete":
             /* gathering has ended */
             offer3 = pc3.localDescription.sdp;
-            console.log(offer3);
+            // console.log(offer3);
             offer3 += "&"
             ws3.send(offer3);
-            console.log(offer3);
+            // console.log(offer3);
             ws3.send("setup:recvAnswer\n&");
             break;
         }
@@ -70,13 +70,13 @@ function createAnswer3() {
             /* gathering has ended */
             if (pc3.localDescription.sdp.includes("c=IN IP4 0.0.0.0")) {
                 answer3 = pc3.localDescription.sdp;
-                console.log(answer3)
+                // console.log(answer3)
                 answer3 += "&"; 
                 ws3.send(answer3);
                 ws3.close();
             } else {
                 console.log("Retry");
-                console.log(pc3.localDescription.sdp);
+                // console.log(pc3.localDescription.sdp);
                 restartWebRTC3();
             };
         }
@@ -123,7 +123,7 @@ function startWebRTC3() {
         };
         ws3.onmessage = function (evt) {
             answer3 = evt.data;
-            console.log(answer3);
+            // console.log(answer3);
             startChannel3();
         }
     } else if (id == 4){
@@ -135,7 +135,7 @@ function startWebRTC3() {
             };
         ws3.onmessage = function (evt) { 
             offer3 = evt.data;
-            console.log(offer3);
+            // console.log(offer3);
             createAnswer3();
         };
     }
