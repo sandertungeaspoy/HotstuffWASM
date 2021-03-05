@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -215,8 +214,10 @@ func main() {
 				if err != nil {
 					panic(err)
 				}
-				// fmt.Println(senderID, cmd, pc)
+				fmt.Println(senderID, cmd, pcString)
+				fmt.Println("Finish")
 				srv.Hs.Finish(block)
+				fmt.Println("Finish done")
 				pc := StringToPartialCert(pcString)
 				fmt.Println("OnVote")
 				srv.Hs.OnVote(pc)
@@ -293,12 +294,14 @@ func StringToBlock(s string) *hotstuff.Block {
 	fmt.Println([]byte(strByte[1]))
 	fmt.Print("Converted string")
 	// fmt.Println(string())
-	parent, _ := base64.RawStdEncoding.DecodeString(strByte[1])
+	// parent, _ := base64.RawStdEncoding.DecodeString(strByte[1])
+	parent := []byte(strByte[1])
 	fmt.Println(parent)
 	var p [32]byte
-	copy(p[:len(p)-2], parent)
+	copy(p[:], parent)
 	fmt.Print("p: ")
 	fmt.Println(p)
+	parent2 := hotstuff.Hash(p)
 	fmt.Print("Parent hash: ")
 	// fmt.Println(parent2)
 	proposer, _ := strconv.ParseUint(strByte[2], 10, 32)
@@ -354,11 +357,14 @@ func StringToPartialCert(s string) hotstuff.PartialCert {
 	signer, _ := strconv.ParseUint(signString[2], 10, 32)
 	sign := *hsecdsa.NewSignature(rInt, sInt, hotstuff.ID(signer))
 
-	hash, _ := base64.RawStdEncoding.DecodeString(strByte[2])
+	// hash, _ := base64.RawStdEncoding.DecodeString(strByte[2])
+	hash := []byte(strByte[2])
 	var h [32]byte
 	copy(h[:], hash)
 	hash2 := hotstuff.Hash(h)
 	var pc hotstuff.PartialCert = hsecdsa.NewPartialCert(&sign, hash2)
+	fmt.Print("Pc created: ")
+	fmt.Println(pc)
 	return pc
 }
 

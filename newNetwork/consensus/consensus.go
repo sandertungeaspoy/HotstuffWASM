@@ -266,9 +266,6 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 		b := block
 		ok := true
 		for ok && b.GetView() > hs.bLock.GetView() {
-			fmt.Println("Parents: ")
-			fmt.Println(b.GetParent())
-			fmt.Println(hs.blocks.Get(b.GetParent()))
 			b, ok = hs.blocks.Get(b.GetParent())
 		}
 		if ok && b.Hash() == hs.bLock.Hash() {
@@ -331,14 +328,17 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 	// finish()
 
 	pcString := "ID: " + strconv.FormatUint(uint64(hs.cfg.ID()), 10) + " PartialCert " + pc.GetStringSignature() + ":" + pc.BlockHash().String()
-
+	fmt.Println(pcString)
 	return pcString, nil
 }
 
 func (hs *chainedhotstuff) Finish(block *hotstuff.Block) {
 	hs.mut.Lock()
+	fmt.Println("update begin")
 	hs.update(block)
+	fmt.Println("Update done")
 	hs.deliver(block)
+	fmt.Println("Deliver done")
 	hs.pendingVotes = make(map[hotstuff.Hash][]hotstuff.PartialCert)
 	hs.mut.Unlock()
 }

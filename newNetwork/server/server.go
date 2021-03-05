@@ -161,6 +161,9 @@ type CmdBuffer struct {
 
 // Accept accepts incoming comands
 func (cmdBuf *CmdBuffer) Accept(cmd hotstuff.Command) bool {
+	if len(cmdBuf.serialNumbers) == 0 {
+		cmdBuf.serialNumbers = make(map[uint64]int)
+	}
 	cmdBuf.mut.Lock()
 	defer cmdBuf.mut.Unlock()
 

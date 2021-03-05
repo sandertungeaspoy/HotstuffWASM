@@ -47,7 +47,6 @@ package hotstuffwasm
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 )
 
@@ -61,7 +60,8 @@ type View uint64
 type Hash [32]byte
 
 func (h Hash) String() string {
-	return base64.StdEncoding.EncodeToString(h[:])
+	// return base64.StdEncoding.EncodeToString(h[:])
+	return string(h[:])
 }
 
 // Command is a client request to be executed by the consensus protocol.
