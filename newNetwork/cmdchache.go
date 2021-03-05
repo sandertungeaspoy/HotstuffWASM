@@ -1,4 +1,4 @@
-// package hotstuffwasm
+package hotstuffwasm
 
 // import (
 // 	"container/list"

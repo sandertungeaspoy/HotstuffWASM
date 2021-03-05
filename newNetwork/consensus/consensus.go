@@ -2,8 +2,8 @@ package consensus
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 
@@ -183,6 +183,7 @@ func (hs *chainedhotstuff) update(block *hotstuff.Block) {
 // Propose proposes the given command
 func (hs *chainedhotstuff) Propose() []byte {
 	hs.mut.Lock()
+	fmt.Println("Start to make proposal")
 	cmd := hs.commands.GetCommand()
 	// TODO: Should probably use channels/contexts here instead such that
 	// a proposal can be made a little later if a new command is added to the queue.
@@ -198,19 +199,28 @@ func (hs *chainedhotstuff) Propose() []byte {
 	c := hotstuff.Command(cmdStringSerial)
 	hs.ctr++
 
+	fmt.Print("Hashes: ")
+	fmt.Print(hs.bLeaf.Hash().String() + ", ")
 	block := hotstuff.NewBlock(hs.bLeaf.Hash(), hs.highQC, c, hs.bLeaf.GetView()+1, hs.cfg.ID())
+
 	hs.blocks.Store(block)
 	hs.mut.Unlock()
+	fmt.Println(block.Parent.String())
+	parentBlock, _ := hs.blocks.Get(hs.bLeaf.Hash())
+	fmt.Println(parentBlock.Hash())
 
 	var bytes []byte
-	cmdString := "ID: " + strconv.FormatUint(uint64(hs.cfg.ID()), 10) + " Propose "
-	cmdByte, _ := hex.DecodeString(cmdString)
-	bytes = append(bytes, cmdByte...)
-	blockByte, _ := hex.DecodeString(block.ToString())
+	cmdString := "ID: " + strconv.FormatUint(uint64(hs.cfg.ID()), 10) + " Propose " + block.ToString()
+	// cmdByte, _ := hex.DecodeString(cmdString)
+	// bytes = append(bytes, cmdByte...)
+	fmt.Println(cmdString)
+	blockByte := []byte(cmdString)
+	fmt.Println(blockByte)
 	bytes = append(bytes, blockByte...)
 	// hs.cfg.Propose(bytes)
 	// self vote
 	// hs.OnPropose(block)
+	fmt.Println(bytes)
 	return bytes
 }
 
@@ -244,6 +254,7 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 		return "", errors.New("OnPropose: block view was less than our view")
 	}
 
+	fmt.Println(block)
 	qcBlock, haveQCBlock := hs.blocks.Get(block.QuorumCert().BlockHash())
 
 	safe := false
@@ -255,6 +266,9 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 		b := block
 		ok := true
 		for ok && b.GetView() > hs.bLock.GetView() {
+			fmt.Println("Parents: ")
+			fmt.Println(b.GetParent())
+			fmt.Println(hs.blocks.Get(b.GetParent()))
 			b, ok = hs.blocks.Get(b.GetParent())
 		}
 		if ok && b.Hash() == hs.bLock.Hash() {
@@ -316,7 +330,7 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 	// leader.Vote(pc)
 	// finish()
 
-	pcString := strconv.FormatUint(uint64(hs.cfg.ID()), 10) + " PartialCert " + pc.GetStringSignature() + ":" + pc.BlockHash().String()
+	pcString := "ID: " + strconv.FormatUint(uint64(hs.cfg.ID()), 10) + " PartialCert " + pc.GetStringSignature() + ":" + pc.BlockHash().String()
 
 	return pcString, nil
 }

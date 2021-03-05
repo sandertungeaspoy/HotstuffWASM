@@ -1,13 +1,13 @@
 <html>
 	<head>
 		<meta charset="utf-8"/>
-		<script src="wasm_exec.js"></script>
+		<script src="script/wasm_exec.js"></script>
 		<script>
             var read = new WebAssembly.Memory({initial:10, maximum:100});
             var write = new WebAssembly.Memory({initial:10, maximum:100});
             var readMsg = new String(read.buffer)
 			const go = new Go();
-			WebAssembly.instantiateStreaming(fetch("mem.wasm"), go.importObject, { js: { mem: read , mem: write} }).then(
+			WebAssembly.instantiateStreaming(fetch("server.wasm"), go.importObject, { js: { mem: read , mem: write} }).then(
 				result => {
           			mod = result.module;
           			inst = result.instance;

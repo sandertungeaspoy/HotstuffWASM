@@ -1,13 +1,13 @@
 <html>
 	<head>
 		<meta charset="utf-8"/>
-		<script src="wasm_exec.js"></script>
+		<script src="script/wasm_exec.js"></script>
 		<script>
             var read = new WebAssembly.Memory({initial:10, maximum:100});
             var write = new WebAssembly.Memory({initial:10, maximum:100});
             var readMsg = new String(read.buffer)
 			const go = new Go();
-			WebAssembly.instantiateStreaming(fetch("mem.wasm"), go.importObject, { js: { mem: read , mem: write} }).then(
+			WebAssembly.instantiateStreaming(fetch("server.wasm"), go.importObject, { js: { mem: read , mem: write} }).then(
 				result => {
           			mod = result.module;
           			inst = result.instance;
@@ -25,9 +25,9 @@
             
 		</script>
         <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-        <script src="server1.js"></script>
-        <script src="server2.js"></script>
-        <script src="server3.js"></script>
+        <script src="script/server1.js"></script>
+        <script src="script/server2.js"></script>
+        <script src="script/server3.js"></script>
         <script>
             var id;
             function startSRV(){
@@ -49,7 +49,7 @@
 			Chat:<input type="text" id="text" name="charbox" value="Test">
             <p id="textbox">This is a test</p>
 			<button onClick="passUint8ArrayToGo();" id="SendButton">Send</button>
-            <button onClick="setUint8ArrayInGo();" id="RecvButton">Receive</button>
+            <button onClick="assignHandler();" id="RecvButton">Assign</button>
 			<button onClick="run();" id="runButton">Run</button>
             <button onClick="startTraffic();" id="startButton" >Start Traffic</button>
 	</body>
@@ -163,20 +163,21 @@
         intervalReadSendWASM = window.setInterval(function(){
             readSendMsgs();
           }, 50);
-    
-        if (id == 1){
-            dc.onmessage() = e => passMsgToGo(e);
-            dc2.onmessage() = e => passMsgToGo(e);
-            dc3.onmessage() = e => passMsgToGo(e);
-        } else if (id == 2) {
-            dc.onmessage() = e => passMsgToGo(e);
-        } else if (id == 3) {
-            dc2.onmessage() = e => passMsgToGo(e);
-        } else if (id == 4) {
-            dc3.onmessage() = e => passMsgToGo(e);
-        }
     };
 
+    function assignHandler() {
+        if (id == 1){
+            dc.onmessage = e => passMsgToGo(e.data);
+            dc2.onmessage = e => passMsgToGo(e.data);
+            dc3.onmessage = e => passMsgToGo(e.data);
+        } else if (id == 2) {
+            dc.onmessage = e => passMsgToGo(e.data);
+        } else if (id == 3) {
+            dc2.onmessage = e => passMsgToGo(e.data);
+        } else if (id == 4) {
+            dc3.onmessage = e => passMsgToGo(e.data);
+        }
+    };
 
 
     </script>

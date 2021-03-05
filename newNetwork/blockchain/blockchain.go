@@ -13,7 +13,7 @@ import (
 type blockChain struct {
 	mut         sync.Mutex
 	maxSize     int
-	blocks      map[hotstuff.Hash]*list.Element
+	Blocks      map[hotstuff.Hash]*list.Element
 	accessOrder list.List
 }
 
@@ -22,14 +22,14 @@ type blockChain struct {
 func New(maxSize int) hotstuff.BlockChain {
 	return &blockChain{
 		maxSize: maxSize,
-		blocks:  make(map[hotstuff.Hash]*list.Element),
+		Blocks:  make(map[hotstuff.Hash]*list.Element),
 	}
 }
 
 func (chain *blockChain) dropOldest() {
 	elem := chain.accessOrder.Back()
 	block := elem.Value.(*hotstuff.Block)
-	delete(chain.blocks, block.Hash())
+	delete(chain.Blocks, block.Hash())
 	chain.accessOrder.Remove(elem)
 }
 
@@ -38,12 +38,12 @@ func (chain *blockChain) Store(block *hotstuff.Block) {
 	chain.mut.Lock()
 	defer chain.mut.Unlock()
 
-	if len(chain.blocks)+1 > chain.maxSize {
+	if len(chain.Blocks)+1 > chain.maxSize {
 		chain.dropOldest()
 	}
 
 	elem := chain.accessOrder.PushFront(block)
-	chain.blocks[block.Hash()] = elem
+	chain.Blocks[block.Hash()] = elem
 }
 
 // Get retrieves a block given its hash
@@ -51,7 +51,7 @@ func (chain *blockChain) Get(hash hotstuff.Hash) (*hotstuff.Block, bool) {
 	chain.mut.Lock()
 	defer chain.mut.Unlock()
 
-	elem, ok := chain.blocks[hash]
+	elem, ok := chain.Blocks[hash]
 	if !ok {
 		return nil, false
 	}

@@ -31,10 +31,10 @@ function createOffer3() {
             case "complete":
             /* gathering has ended */
             offer3 = pc3.localDescription.sdp;
-            console.log(offer3);
+            // console.log(offer3);
             offer3 += "&"
             ws3.send(offer3);
-            console.log(offer3);
+            // console.log(offer3);
             ws3.send("setup:recvAnswer\n&");
             break;
         }
@@ -70,13 +70,13 @@ function createAnswer3() {
             /* gathering has ended */
             if (pc3.localDescription.sdp.includes("c=IN IP4 0.0.0.0")) {
                 answer3 = pc3.localDescription.sdp;
-                console.log(answer3)
+                // console.log(answer3)
                 answer3 += "&"; 
                 ws3.send(answer3);
                 ws3.close();
             } else {
-                console.log("Retry");
-                console.log(pc3.localDescription.sdp);
+                // console.log("Retry");
+                // console.log(pc3.localDescription.sdp);
                 restartWebRTC3();
             };
         }
@@ -101,7 +101,7 @@ function createAnswer3() {
 
 
 function startChannel3() {
-    console.log("Trying to start channel")
+    // console.log("Trying to start channel")
     if (pc3.signalingState != "have-local-offer") return;
     var desc = new RTCSessionDescription({ type:"answer", sdp:answer3 });
     pc3.setRemoteDescription(desc);
@@ -119,11 +119,11 @@ function startWebRTC3() {
         welcomeMsg3 = "Hello from Server 1"
         ws3.onopen = function() {
             createOffer3();
-            console.log("WS open");
+            // console.log("WS open");
         };
         ws3.onmessage = function (evt) {
             answer3 = evt.data;
-            console.log(answer3);
+            // console.log(answer3);
             startChannel3();
         }
     } else if (id == 4){
@@ -135,7 +135,7 @@ function startWebRTC3() {
             };
         ws3.onmessage = function (evt) { 
             offer3 = evt.data;
-            console.log(offer3);
+            // console.log(offer3);
             createAnswer3();
         };
     }
@@ -144,7 +144,7 @@ function startWebRTC3() {
 function restartWebRTC3() {
     dc3, pc3 = new RTCPeerConnection({ iceServers: [server] });
     pc3.ondatachannel = e3 => dcInit3(dc3 = e3.channel);
-    pc3.oniceconnectionstatechange = e3 => console.log(pc3.iceConnectionState);
+    // pc3.oniceconnectionstatechange = e3 => console.log(pc3.iceConnectionState);
         
     offer3 = "";
     answer3 = "";

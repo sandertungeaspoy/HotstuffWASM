@@ -184,7 +184,10 @@ func (cmdBuf *CmdBuffer) Accept(cmd hotstuff.Command) bool {
 
 // GetCommand returns the front command from the commandbuffer
 func (cmdBuf *CmdBuffer) GetCommand() *hotstuff.Command {
-	cmd := cmdBuf.Cmds[0]
-	cmdBuf.Cmds = cmdBuf.Cmds[1:]
-	return &cmd
+	if len(cmdBuf.Cmds) != 0 {
+		cmd := cmdBuf.Cmds[0]
+		cmdBuf.Cmds = cmdBuf.Cmds[1:]
+		return &cmd
+	}
+	return nil
 }

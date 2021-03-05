@@ -1,6 +1,8 @@
 package consensus
 
 import (
+	"fmt"
+
 	hotstuff "github.com/HotstuffWASM/newNetwork"
 	blockchain "github.com/HotstuffWASM/newNetwork/blockchain"
 	ecdsa "github.com/HotstuffWASM/newNetwork/crypto/ecdsa"
@@ -32,6 +34,7 @@ func (b Builder) Build() hotstuff.Consensus {
 	}
 	signer, verifier := ecdsa.New(b.Config)
 	if b.BlockChain == nil {
+		fmt.Println("Creating new BlockCHain")
 		hs.blocks = blockchain.New(100)
 	}
 	if b.Signer == nil {

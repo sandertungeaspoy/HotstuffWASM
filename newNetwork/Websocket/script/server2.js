@@ -31,10 +31,10 @@ function createOffer2() {
               case "complete":
                 /* gathering has ended */
                 offer2 = pc2.localDescription.sdp;
-                console.log(offer2);
+                // console.log(offer2);
                 offer2 += "&"
                 ws2.send(offer2);
-                console.log(offer2);
+                // console.log(offer2);
                 ws2.send("setup:recvAnswer\n&");
                 break;
             }
@@ -70,13 +70,13 @@ function createAnswer2() {
             /* gathering has ended */
             if (pc2.localDescription.sdp.includes("c=IN IP4 0.0.0.0")) {
                 answer2 = pc2.localDescription.sdp;
-                console.log(answer2)
+                // console.log(answer2)
                 answer2 += "&"; 
                 ws2.send(answer2);
                 ws2.close();
             } else {
-                console.log("Retry");
-                console.log(pc2.localDescription.sdp);
+                // console.log("Retry");
+                // console.log(pc2.localDescription.sdp);
                 restartWebRTC2();
             };
         }
@@ -119,13 +119,13 @@ function startWebRTC2() {
         welcomeMsg2 = "Hello from Server 1"
         ws2.onopen = function() {
             createOffer2();
-            console.log("WS open");
+            // console.log("WS open");
             };
         ws2.onmessage = function (evt) {
-            console.log("msg recv");
-            console.log(evt);
+            // console.log("msg recv");
+            // console.log(evt);
             answer2 = evt.data;
-            console.log(answer2);
+            // console.log(answer2);
             startChannel2();
         }
     } else if (id == 3) {
@@ -137,7 +137,7 @@ function startWebRTC2() {
             };
         ws2.onmessage = function (evt) { 
             offer2 = evt.data;
-            console.log(offer2);
+            // console.log(offer2);
             createAnswer2();
         };
     }
@@ -146,7 +146,7 @@ function startWebRTC2() {
 function restartWebRTC2() {
     dc2, pc2 = new RTCPeerConnection({ iceServers: [server] });
     pc2.ondatachannel = e2 => dcInit2(dc2 = e2.channel);
-    pc2.oniceconnectionstatechange = e2 => console.log(pc2.iceConnectionState);
+    // pc2.oniceconnectionstatechange = e2 => console.log(pc2.iceConnectionState);
         
     offer2 = "";
     answer2 = "";

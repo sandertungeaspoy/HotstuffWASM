@@ -4,7 +4,7 @@ var server = { urls: "stun:stun.l.google.com:19302" };
 
 var dc, pc = new RTCPeerConnection({ iceServers: [server] });
 pc.ondatachannel = e => dcInit(dc = e.channel);
-pc.oniceconnectionstatechange = e => console.log(pc.iceConnectionState);
+// pc.oniceconnectionstatechange = e => console.log(pc.iceConnectionState);
 
 
 var ws; 
@@ -32,22 +32,22 @@ function createOffer() {
           case "complete":
             /* gathering has ended */
             offer = pc.localDescription.sdp;
-            console.log(offer);
+            // console.log(offer);
             offer += "&"
             ws.send(offer);
-            console.log(offer);
+            // console.log(offer);
             ws.send("setup:recvAnswer\n&");
             break;
         }
       });
     // pc.onicecandidate = e => {
-    //     console.log(e);
+        // console.log(e);
     //     if (e.candidate) return;
     //     offer = pc.localDescription.sdp;
-    //     console.log(offer);
+        // console.log(offer);
     //     offer += "&"
     //     ws.send(offer);
-    //     console.log(offer);
+        // console.log(offer);
     //     ws.send("setup:recvAnswer\n&");
     // };
     return true;
@@ -72,28 +72,28 @@ function createAnswer() {
             /* gathering has ended */
             if (pc.localDescription.sdp.includes("c=IN IP4 0.0.0.0")) {
                 answer = pc.localDescription.sdp;
-                console.log(answer)
+                // console.log(answer)
                 answer += "&"; 
                 ws.send(answer);
                 ws.close();
             } else {
-                console.log("Retry");
-                console.log(pc.localDescription.sdp);
+                // console.log("Retry");
+                // console.log(pc.localDescription.sdp);
                 restartWebRTC();
             };
         }
         });
     // pc.onicecandidate = e => {
-    //     console.log(e);
+        // console.log(e);
     //     if (e.candidate == "") {
-    //         console.log(answer);
+            // console.log(answer);
     //         if (pc.localDescription.sdp.includes("c=IN IP4 0.0.0.0")) {
     //             answer = pc.localDescription.sdp;
     //             answer += "&"; 
     //             ws.send(answer);
     //             return;
     //         } else {
-    //             console.log("Retry");
+                // console.log("Retry");
     //             createAnswer();
     //         }
     //     }
@@ -102,7 +102,7 @@ function createAnswer() {
 
 
 function startChannel() {
-    console.log("Trying to start channel")
+    // console.log("Trying to start channel")
     if (pc.signalingState != "have-local-offer") return;
     var desc = new RTCSessionDescription({ type:"answer", sdp:answer });
     pc.setRemoteDescription(desc);
@@ -120,11 +120,11 @@ function startWebRTC() {
         welcomeMsg = "Hello from Server 1"
         ws.onopen = function() {
             createOffer();
-            console.log("WS open");
+            // console.log("WS open");
         };
         ws.onmessage = function (evt) {
             answer = evt.data;
-            console.log(answer);
+            // console.log(answer);
             startChannel();
             
         }
@@ -137,7 +137,7 @@ function startWebRTC() {
             };
         ws.onmessage = function (evt) { 
             offer = evt.data;
-            console.log(offer);
+            // console.log(offer);
             createAnswer();   
         };
     }
@@ -146,7 +146,7 @@ function startWebRTC() {
 function restartWebRTC() {
     dc, pc = new RTCPeerConnection({ iceServers: [server] });
     pc.ondatachannel = e => dcInit(dc = e.channel);
-    pc.oniceconnectionstatechange = e => console.log(pc.iceConnectionState);
+    // pc.oniceconnectionstatechange = e => console.log(pc.iceConnectionState);
 
     offer = "";
     answer = "";

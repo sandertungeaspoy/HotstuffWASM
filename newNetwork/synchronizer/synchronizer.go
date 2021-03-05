@@ -2,6 +2,7 @@ package synchronizer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -29,7 +30,7 @@ func New(leaderRotation hotstuff.LeaderRotation, initialTimeout time.Duration) *
 	return &Synchronizer{
 		LeaderRotation: leaderRotation,
 		timeout:        initialTimeout,
-		Proposal:       make(chan []byte),
+		Proposal:       make(chan []byte, 16),
 	}
 }
 
@@ -60,7 +61,9 @@ func (s *Synchronizer) Init(hs hotstuff.Consensus) {
 // Start starts the synchronizer.
 func (s *Synchronizer) Start() {
 	if s.GetLeader(s.hs.Leaf().GetView()+1) == s.hs.Config().ID() {
+		fmt.Println("Proposing")
 		s.Proposal <- s.hs.Propose()
+		fmt.Println("Proposed on channel")
 	}
 	s.timer = time.NewTimer(s.timeout)
 	var ctx context.Context
