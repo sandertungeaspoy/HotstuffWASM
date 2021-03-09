@@ -8,9 +8,10 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"net"
+	"os"
 	"strconv"
 	"strings"
-	"syscall/js"
 
 	// "syscall/js"
 	"time"
@@ -30,9 +31,11 @@ var serverID hotstuff.ID = 0
 var recieved chan []byte
 
 func main() {
-	registerCallbacks()
-
-	serverID = hotstuff.ID(0)
+	// registerCallbacks()
+	idString := os.Args[1]
+	idUint, _ := strconv.ParseUint(idString, 10, 32)
+	serverID = hotstuff.ID(idUint)
+	// serverID = hotstuff.ID(0)
 	for {
 		if serverID != 0 {
 			break
@@ -154,6 +157,29 @@ func main() {
 	addr[2] = "127.0.0.1:13372"
 	addr[3] = "127.0.0.1:13373"
 	addr[4] = "127.0.0.1:13374"
+
+	if idUint == 1 {
+		go func() {
+			lis, errL := net.Listen("tcp", addr[idUint])
+			if errL != nil {
+				fmt.Println(errL)
+			}
+			for {
+				fmt.Println("Waiting for conn")
+				conn, err := lis.Accept()
+				if err != nil {
+					fmt.Println(err)
+				}
+				go handleConn(conn)
+			}
+		}()
+	} else {
+		conn, err := net.Dial("tcp", addr[1])
+		if err != nil {
+			fmt.Println(err)
+		}
+		go handleConn(conn)
+	}
 
 	leaderRotation := leaderrotation.NewFixed(hotstuff.ID(1))
 	pm := synchronizer.New(leaderRotation, time.Duration(100)*time.Second)
@@ -391,72 +417,101 @@ func StringToPartialCert(s string) hotstuff.PartialCert {
 	return pc
 }
 
-// GetSelfID gets the ID of the server
-func GetSelfID(this js.Value, i []js.Value) interface{} {
-	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
+// // GetSelfID gets the ID of the server
+// func GetSelfID(this js.Value, i []js.Value) interface{} {
+// 	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
 
-	selfID, _ := strconv.ParseUint(value1, 10, 32)
-	serverID = hotstuff.ID(selfID)
-	fmt.Println(serverID)
-	return nil
-}
+// 	selfID, _ := strconv.ParseUint(value1, 10, 32)
+// 	serverID = hotstuff.ID(selfID)
+// 	fmt.Println(serverID)
+// 	return nil
+// }
 
-// PassUint8ArrayToGo passes array
-func PassUint8ArrayToGo(this js.Value, args []js.Value) interface{} {
+// // PassUint8ArrayToGo passes array
+// func PassUint8ArrayToGo(this js.Value, args []js.Value) interface{} {
 
-	recv := make([]byte, args[0].Get("length").Int())
+// 	recv := make([]byte, args[0].Get("length").Int())
 
-	_ = js.CopyBytesToGo(recv, args[0])
+// 	_ = js.CopyBytesToGo(recv, args[0])
 
-	recvBytes = append(recvBytes, recv)
-	recieved <- recv
+// 	recvBytes = append(recvBytes, recv)
+// 	recieved <- recv
 
-	return nil
-}
+// 	return nil
+// }
 
-// SetUint8ArrayInGo sets array
-func SetUint8ArrayInGo(this js.Value, args []js.Value) interface{} {
+// // SetUint8ArrayInGo sets array
+// func SetUint8ArrayInGo(this js.Value, args []js.Value) interface{} {
 
-	if len(sendBytes) == 0 {
-		return nil
-	}
+// 	if len(sendBytes) == 0 {
+// 		return nil
+// 	}
 
-	var msg []byte
+// 	var msg []byte
 
-	if len(sendBytes) > 1 {
-		msg, sendBytes = sendBytes[0], sendBytes[1:]
-	} else {
-		msg, sendBytes = sendBytes[0], make([][]byte, 0)
-	}
-	if msg == nil {
-		return nil
-	}
-	_ = js.CopyBytesToJS(args[0], msg)
+// 	if len(sendBytes) > 1 {
+// 		msg, sendBytes = sendBytes[0], sendBytes[1:]
+// 	} else {
+// 		msg, sendBytes = sendBytes[0], make([][]byte, 0)
+// 	}
+// 	if msg == nil {
+// 		return nil
+// 	}
+// 	_ = js.CopyBytesToJS(args[0], msg)
 
-	return nil
-}
+// 	return nil
+// }
 
-// GetArraySize gets the array size
-func GetArraySize(this js.Value, args []js.Value) interface{} {
+// // GetArraySize gets the array size
+// func GetArraySize(this js.Value, args []js.Value) interface{} {
 
-	if len(sendBytes) == 0 {
-		return nil
-	}
-	size := make([]byte, 10)
+// 	if len(sendBytes) == 0 {
+// 		return nil
+// 	}
+// 	size := make([]byte, 10)
 
-	msgSize := []byte(strconv.Itoa(len(sendBytes[0])))
+// 	msgSize := []byte(strconv.Itoa(len(sendBytes[0])))
 
-	copy(size, msgSize)
+// 	copy(size, msgSize)
 
-	_ = js.CopyBytesToJS(args[0], size)
+// 	_ = js.CopyBytesToJS(args[0], size)
 
-	return nil
-}
+// 	return nil
+// }
 
-func registerCallbacks() {
-	js.Global().Set("GetSelfID", js.FuncOf(GetSelfID))
+// func registerCallbacks() {
+// 	js.Global().Set("GetSelfID", js.FuncOf(GetSelfID))
 
-	js.Global().Set("PassUint8ArrayToGo", js.FuncOf(PassUint8ArrayToGo))
-	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
-	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))
+// 	js.Global().Set("PassUint8ArrayToGo", js.FuncOf(PassUint8ArrayToGo))
+// 	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
+// 	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))
+// }
+
+func handleConn(conn net.Conn) {
+	go func() {
+		var msg []byte
+		for {
+			if len(sendBytes) > 1 {
+				msg, sendBytes = sendBytes[0], sendBytes[1:]
+				conn.Write(msg)
+			} else if len(sendBytes) == 1 {
+				msg, sendBytes = sendBytes[0], make([][]byte, 0)
+				conn.Write(msg)
+			}
+		}
+
+	}()
+
+	go func() {
+		for {
+			buff := make([]byte, 4096)
+			n, _ := conn.Read(buff)
+			if n > 0 {
+				res := make([]byte, n)
+				copy(res, buff[:n])
+				recvBytes = append(recvBytes, res)
+				recieved <- res
+			}
+		}
+	}()
 }
