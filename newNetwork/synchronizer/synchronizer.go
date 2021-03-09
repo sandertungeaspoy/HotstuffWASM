@@ -23,6 +23,7 @@ type Synchronizer struct {
 	hs       hotstuff.Consensus
 	stopped  bool
 	Proposal chan []byte
+	NewView  chan bool
 }
 
 // New creates a new Synchronizer.
@@ -31,6 +32,7 @@ func New(leaderRotation hotstuff.LeaderRotation, initialTimeout time.Duration) *
 		LeaderRotation: leaderRotation,
 		timeout:        initialTimeout,
 		Proposal:       make(chan []byte, 16),
+		NewView:        make(chan bool, 2),
 	}
 }
 
@@ -50,6 +52,7 @@ func (s *Synchronizer) OnFinishQC() {
 
 // OnNewView should be called when a replica receives a valid NewView message.
 func (s *Synchronizer) OnNewView() {
+	fmt.Println("Should beat")
 	s.beat()
 }
 
@@ -64,11 +67,11 @@ func (s *Synchronizer) Start() {
 		fmt.Println("Proposing")
 		s.Proposal <- s.hs.Propose()
 		fmt.Println("Proposed on channel")
+		s.timer = time.NewTimer(s.timeout)
+		var ctx context.Context
+		ctx, s.stop = context.WithCancel(context.Background())
+		go s.newViewTimeout(ctx)
 	}
-	s.timer = time.NewTimer(s.timeout)
-	var ctx context.Context
-	ctx, s.stop = context.WithCancel(context.Background())
-	go s.newViewTimeout(ctx)
 }
 
 // Stop stops the synchronizer.
@@ -91,6 +94,8 @@ func (s *Synchronizer) beat() {
 	if view <= s.lastBeat {
 		s.mut.Unlock()
 		// logger.Debug("Can't beat more than once per view ", s.lastBeat)
+		fmt.Println("Can't beat more than once per view: ", s.lastBeat)
+		fmt.Println(view)
 		return
 	}
 	if s.GetLeader(view+1) != s.hs.Config().ID() {
@@ -106,12 +111,18 @@ func (s *Synchronizer) beat() {
 
 func (s *Synchronizer) newViewTimeout(ctx context.Context) {
 	for {
+		time.Sleep(time.Millisecond * 10)
 		select {
 		case <-ctx.Done():
 			return
 		case <-s.timer.C:
+			fmt.Println("Timeout")
 			s.hs.CreateDummy()
-			go s.hs.NewView()
+			if s.GetLeader(s.hs.Leaf().View) == s.hs.Config().ID() {
+				go func() {
+					s.NewView <- true
+				}()
+			}
 			s.mut.Lock()
 			s.timer.Reset(s.timeout)
 			s.mut.Unlock()

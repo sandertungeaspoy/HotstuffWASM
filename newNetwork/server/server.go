@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"encoding/hex"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,7 +22,7 @@ type Server struct {
 	ID        hotstuff.ID
 	Addr      string
 	Hs        hotstuff.Consensus
-	Pm        synchronizer.Synchronizer
+	Pm        *synchronizer.Synchronizer
 	Cfg       *Config
 	PubKey    *ecdsa.PublicKey
 	Cert      *tls.Certificate
@@ -148,8 +149,8 @@ func (srv *Server) Deliver(_ context.Context, block *hotstuff.Block) {
 
 // Exec executes a command
 func (srv *Server) Exec(cmd hotstuff.Command) {
-	var c chan struct{}
-	c <- struct{}{}
+	fmt.Print("Command executed: ")
+	fmt.Println(cmd)
 }
 
 // CmdBuffer is a buffer for the commands

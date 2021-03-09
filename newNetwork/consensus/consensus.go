@@ -108,18 +108,21 @@ func (hs *chainedhotstuff) updateHighQC(qc hotstuff.QuorumCert) {
 	// logger.Debugf("updateHighQC: %v", qc)
 	if !hs.verifier.VerifyQuorumCert(qc) {
 		// logger.Info("updateHighQC: QC could not be verified!")
+		fmt.Println("updateHighQC: QC could not be verified!")
 		return
 	}
 
 	newBlock, ok := hs.blocks.Get(qc.BlockHash())
 	if !ok {
 		// logger.Info("updateHighQC: Could not find block referenced by new QC!")
+		fmt.Println("updateHighQC: Could not find block referenced by new QC!")
 		return
 	}
 
 	oldBlock, ok := hs.blocks.Get(hs.highQC.BlockHash())
 	if !ok {
 		// logger.Panic("Block from the old highQC missing from chain")
+		fmt.Println("Block from the old highQC missing from chain")
 	}
 
 	if newBlock.GetView() > oldBlock.GetView() {
@@ -184,23 +187,24 @@ func (hs *chainedhotstuff) update(block *hotstuff.Block) {
 func (hs *chainedhotstuff) Propose() []byte {
 	hs.mut.Lock()
 	fmt.Println("Start to make proposal")
-	cmd := hs.commands.GetCommand()
+	// cmd := hs.commands.GetCommand()
 	// TODO: Should probably use channels/contexts here instead such that
 	// a proposal can be made a little later if a new command is added to the queue.
 	// Alternatively, we could let the pacemaker know when commands arrive, so that it
 	// can rall Propose() again.
-	if cmd == nil {
-		// hs.mut.Unlock()
-		// return
-		cmd = new(hotstuff.Command)
-	}
+	// if cmd == nil {
+	// 	// hs.mut.Unlock()
+	// 	// return
+	// 	cmd = new(hotstuff.Command)
+	// }
+	cmd := new(hotstuff.Command)
 
 	cmdStringSerial := strconv.FormatUint(uint64(hs.cfg.ID()), 10) + "sNumber" + strconv.Itoa(hs.ctr) + "sNumber" + string(*cmd)
 	c := hotstuff.Command(cmdStringSerial)
 	hs.ctr++
 
-	fmt.Print("Hashes: ")
-	fmt.Print(hs.bLeaf.Hash().String() + ", ")
+	fmt.Print("bLeaf.GetView(): ")
+	fmt.Print(hs.bLeaf.GetView())
 	block := hotstuff.NewBlock(hs.bLeaf.Hash(), hs.highQC, c, hs.bLeaf.GetView()+1, hs.cfg.ID())
 
 	hs.blocks.Store(block)
@@ -232,6 +236,7 @@ func (hs *chainedhotstuff) NewView() {
 	if leaderID == hs.cfg.ID() {
 		hs.mut.Unlock()
 		// TODO: Is this necessary
+		fmt.Println("Leader OnNewView")
 		hs.OnNewView(msg)
 		return
 	}
@@ -327,20 +332,21 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 	// leader.Vote(pc)
 	// finish()
 
-	pcString := "ID: " + strconv.FormatUint(uint64(hs.cfg.ID()), 10) + " PartialCert " + pc.GetStringSignature() + ":" + pc.BlockHash().String()
+	pcString := pc.GetStringSignature() + ":" + pc.BlockHash().String()
 	fmt.Println(pcString)
+	hs.mut.Unlock()
 	return pcString, nil
 }
 
 func (hs *chainedhotstuff) Finish(block *hotstuff.Block) {
-	hs.mut.Lock()
+	// hs.mut.Lock()
 	fmt.Println("update begin")
 	hs.update(block)
 	fmt.Println("Update done")
 	hs.deliver(block)
 	fmt.Println("Deliver done")
 	hs.pendingVotes = make(map[hotstuff.Hash][]hotstuff.PartialCert)
-	hs.mut.Unlock()
+	// hs.mut.Unlock()
 }
 
 func (hs *chainedhotstuff) fetchBlockForVote(vote hotstuff.PartialCert) {
@@ -378,24 +384,33 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 		hs.mut.Unlock()
 	}()
 
+	fmt.Print("Get hash: ")
+	fmt.Println(cert.BlockHash())
 	block, ok := hs.blocks.Get(cert.BlockHash())
 	if !ok {
+		fmt.Println("Not ok")
 		// logger.Debugf("Could not find block for vote: %.8s. Attempting to fetch.", cert.BlockHash())
 		hs.fetchBlockForVote(cert)
 		return
 	}
+	fmt.Println(block)
 
 	hs.mut.Lock()
+	fmt.Println("View old and new: ")
+	fmt.Println(hs.bLeaf.GetView())
+	fmt.Println(block.GetView())
 
 	if block.GetView() <= hs.bLeaf.GetView() {
 		// too old
 		hs.mut.Unlock()
+		fmt.Println("View is too old")
 		return
 	}
 
 	if !hs.verifier.VerifyPartialCert(cert) {
 		// logger.Info("OnVote: Vote could not be verified!")
 		hs.mut.Unlock()
+		fmt.Println("OnVote: Vote could not be verified!")
 		return
 	}
 
@@ -407,12 +422,14 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 
 	if len(votes) < hs.cfg.QuorumSize() {
 		hs.mut.Unlock()
+		fmt.Println("Not enough votes, returning...")
 		return
 	}
 
 	qc, err := hs.signer.CreateQuorumCert(block, votes)
 	if err != nil {
 		// logger.Info("OnVote: could not create QC for block: ", err)
+		fmt.Println("OnVote: could not create QC for block: ", err)
 	}
 	delete(hs.verifiedVotes, cert.BlockHash())
 	hs.updateHighQC(qc)
@@ -420,6 +437,9 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 	hs.mut.Unlock()
 	// signal the synchronizer
 	hs.synchronizer.OnFinishQC()
+	fmt.Print("QC: ")
+	fmt.Println(qc)
+	fmt.Println("OnVoteDone")
 }
 
 // OnNewView handles an incoming NewView
@@ -435,11 +455,13 @@ func (hs *chainedhotstuff) OnNewView(msg hotstuff.NewView) {
 		hs.mut.Unlock()
 	}()
 
+	fmt.Println("OnNewView Pre Lock")
 	hs.mut.Lock()
-
+	fmt.Println("Post lock")
 	// logger.Debug("OnNewView: ", msg)
 
 	hs.updateHighQC(msg.QC)
+	fmt.Println("Updated QC")
 
 	v, ok := hs.newView[msg.View]
 	if !ok {
@@ -448,13 +470,14 @@ func (hs *chainedhotstuff) OnNewView(msg hotstuff.NewView) {
 	v[msg.ID] = struct{}{}
 	hs.newView[msg.View] = v
 
-	if len(v) < hs.cfg.QuorumSize() {
-		hs.mut.Unlock()
-		return
-	}
+	// if len(v) < hs.cfg.QuorumSize() {
+	// 	hs.mut.Unlock()
+	// 	return
+	// }
 
 	hs.mut.Unlock()
 	// signal the synchronizer
+	fmt.Println("Call synchronizer")
 	hs.synchronizer.OnNewView()
 }
 

@@ -4,12 +4,15 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"math/big"
 	"strconv"
 	"strings"
 	"syscall/js"
+
+	// "syscall/js"
 	"time"
 
 	hotstuff "github.com/HotstuffWASM/newNetwork"
@@ -24,6 +27,7 @@ import (
 var sendBytes [][]byte
 var recvBytes [][]byte
 var serverID hotstuff.ID = 0
+var recieved chan []byte
 
 func main() {
 	registerCallbacks()
@@ -40,6 +44,7 @@ func main() {
 
 	sendBytes = make([][]byte, 0)
 	recvBytes = make([][]byte, 0)
+	recieved = make(chan []byte, 16)
 	//Public keys
 	pubkeyString1 := "-----BEGIN HOTSTUFF PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEyaKwozY7C9LL4CAGyuY3gQvHrysu\nkW2YuGfGHvgumwRANtalltLIWEQ5OS2ewsR2xastcb/gzUBtyj54Mi1saw==\n-----END HOTSTUFF PUBLIC KEY-----"
 	pubBlock1, _ := pem.Decode([]byte(pubkeyString1))
@@ -151,13 +156,13 @@ func main() {
 	addr[4] = "127.0.0.1:13374"
 
 	leaderRotation := leaderrotation.NewFixed(hotstuff.ID(1))
-	pm := synchronizer.New(leaderRotation, time.Duration(1000)*time.Millisecond)
+	pm := synchronizer.New(leaderRotation, time.Duration(100)*time.Second)
 	var cfg *server.Config
 
 	srv := server.Server{
 		ID:        serverID,
 		Addr:      addr[int(serverID)],
-		Pm:        *pm,
+		Pm:        pm,
 		Cfg:       cfg,
 		PubKey:    pubKey[serverID],
 		Cert:      cert[serverID],
@@ -183,7 +188,7 @@ func main() {
 		Config:       srv.Cfg,
 		Acceptor:     &srv.Cmds,
 		Executor:     &srv,
-		Synchronizer: &srv.Pm,
+		Synchronizer: srv.Pm,
 		CommandQueue: &srv.Cmds,
 	}.Build()
 
@@ -199,20 +204,29 @@ func main() {
 			time.Sleep(time.Millisecond * 10)
 			select {
 			case msgByte := <-srv.Pm.Proposal:
-				fmt.Print("Read channel msg: ")
-				fmt.Println(msgByte)
+				fmt.Println("Read channel msg...")
+				// fmt.Println(msgByte)
 				senderID, cmd, obj := FormatBytes(msgByte)
-				fmt.Println(senderID, cmd, obj)
+				fmt.Println("FormatBytes result: ")
+				fmt.Print("SenderID: ")
+				fmt.Println(senderID)
+				fmt.Print("cmd: ")
+				fmt.Println(cmd)
+				fmt.Print("obj: ")
+				fmt.Println(obj)
 				if senderID != srv.ID && cmd != "Propose" {
 					continue
 				}
+				fmt.Println("Formating string to block...")
 				block := StringToBlock(obj)
+				fmt.Print("Formated block: ")
+				fmt.Println(block)
 
 				fmt.Println("OnPropose")
 				fmt.Print(block.Parent)
 				pcString, err := srv.Hs.OnPropose(block)
 				if err != nil {
-					panic(err)
+					fmt.Println(err)
 				}
 				fmt.Println(senderID, cmd, pcString)
 				fmt.Println("Finish")
@@ -223,16 +237,20 @@ func main() {
 				srv.Hs.OnVote(pc)
 				fmt.Println("SendByte")
 				sendBytes = append(sendBytes, msgByte)
-			}
-			if len(recvBytes) != 0 {
-				fmt.Println("Recieved byte")
-				_, cmd, obj := FormatBytes(recvBytes[0])
-				if cmd != " PartialCert " {
-					continue
-				}
-				pc := StringToPartialCert(obj)
+			case <-recieved:
+				fmt.Println("Recieved byte...")
+				// _, cmd, obj := FormatBytes(recvBytes[0])
+				// if cmd != " PartialCert " {
+				// 	continue
+				// }
+				pc := StringToPartialCert(string(recvBytes[0]))
 				srv.Hs.OnVote(pc)
 				recvBytes = recvBytes[1:]
+			case ok := <-srv.Pm.NewView:
+				fmt.Println("Timeout -> start new view")
+				if ok {
+					srv.Hs.NewView()
+				}
 			}
 		}
 	} else {
@@ -240,8 +258,7 @@ func main() {
 		for {
 			time.Sleep(time.Millisecond * 10)
 			if len(recvBytes) != 0 {
-				fmt.Println("Recieved byte from leader")
-				fmt.Println(recvBytes[0])
+				fmt.Println("Recieved byte from leader...")
 				id, cmd, obj := FormatBytes(recvBytes[0])
 				if id == hotstuff.ID(0) || cmd != "Propose" {
 					continue
@@ -290,12 +307,13 @@ func FormatBytes(msg []byte) (id hotstuff.ID, cmd string, obj string) {
 // StringToBlock returns a block from a given string
 func StringToBlock(s string) *hotstuff.Block {
 	strByte := strings.Split(s, ":")
-	fmt.Print("ParentString: ")
-	fmt.Println([]byte(strByte[1]))
-	fmt.Print("Converted string")
+	// fmt.Print("ParentString: ")
+	// // fmt.Println(s)
+	// fmt.Print("Converted string")
 	// fmt.Println(string())
 	// parent, _ := base64.RawStdEncoding.DecodeString(strByte[1])
-	parent := []byte(strByte[1])
+	// parent := []byte(strByte[1])
+	parent, _ := hex.DecodeString(strByte[1])
 	fmt.Println(parent)
 	var p [32]byte
 	copy(p[:], parent)
@@ -306,18 +324,20 @@ func StringToBlock(s string) *hotstuff.Block {
 	// fmt.Println(parent2)
 	proposer, _ := strconv.ParseUint(strByte[2], 10, 32)
 	cmd := hotstuff.Command(strByte[3])
-	certHash := []byte(strByte[5])
+	// certHash := []byte(strByte[5])
+	certHash, _ := hex.DecodeString(strByte[5])
 	var c [32]byte
 	copy(c[:], certHash)
 	certHash2 := hotstuff.Hash(c)
 	var sig map[hotstuff.ID]*hsecdsa.Signature
+	sig = make(map[hotstuff.ID]*hsecdsa.Signature)
 	sigString := strByte[4]
 
 	sigBytes := strings.Split(sigString, "\n")
 	fmt.Print("SigString:")
 	fmt.Println(sigString)
 	if sigString != "" {
-		for i := 0; i < len(sigBytes); i++ {
+		for i := 0; i < len(sigBytes)-1; i++ {
 			m := strings.Split(sigBytes[i], "=")
 			id, _ := strconv.ParseUint(m[0], 10, 32)
 			signString := strings.Split(m[1], "-")
@@ -347,9 +367,11 @@ func StringToBlock(s string) *hotstuff.Block {
 
 // StringToPartialCert returns a PartialCert from a string
 func StringToPartialCert(s string) hotstuff.PartialCert {
+	fmt.Println(s)
 	strByte := strings.Split(s, ":")
 
 	signString := strings.Split(strByte[0], "-")
+	fmt.Println(signString)
 	rInt := new(big.Int)
 	rInt.SetString(signString[0], 0)
 	sInt := new(big.Int)
@@ -358,7 +380,8 @@ func StringToPartialCert(s string) hotstuff.PartialCert {
 	sign := *hsecdsa.NewSignature(rInt, sInt, hotstuff.ID(signer))
 
 	// hash, _ := base64.RawStdEncoding.DecodeString(strByte[2])
-	hash := []byte(strByte[2])
+	// hash := []byte(strByte[1])
+	hash, _ := hex.DecodeString(strByte[1])
 	var h [32]byte
 	copy(h[:], hash)
 	hash2 := hotstuff.Hash(h)
@@ -381,12 +404,12 @@ func GetSelfID(this js.Value, i []js.Value) interface{} {
 // PassUint8ArrayToGo passes array
 func PassUint8ArrayToGo(this js.Value, args []js.Value) interface{} {
 
-	received := make([]byte, args[0].Get("length").Int())
+	recv := make([]byte, args[0].Get("length").Int())
 
-	_ = js.CopyBytesToGo(received, args[0])
+	_ = js.CopyBytesToGo(recv, args[0])
 
-	recvBytes = append(recvBytes, received)
-	fmt.Println(received)
+	recvBytes = append(recvBytes, recv)
+	recieved <- recv
 
 	return nil
 }

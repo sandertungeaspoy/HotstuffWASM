@@ -11,14 +11,16 @@
 				result => {
           			mod = result.module;
           			inst = result.instance;
-          			
         		}
+                
       		);
 
       		async function run() {
+                document.getElementById("runButton").disabled = true;
+                assignHandler();
         		await go.run(inst);
         		inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
-                document.getElementById("runButton").disabled = true;
+                
       		}
             
             
@@ -35,76 +37,47 @@
                 startWebRTC2();
                 startWebRTC3();
                 id = document.getElementById("self-id").value;
-                document.getElementById("idButton").disabled = true;
+                document.getElementById("self-id").disabled = false;
+                document.getElementById("idButton").disabled = false;
+                document.getElementById("id1").disabled = true;
+                document.getElementById("id2").disabled = true;
+                document.getElementById("id3").disabled = true;
+                document.getElementById("id4").disabled = true;
             }
         </script>
         
 	</head>
 	<body>
-
+                
 		<h1>HotStuff WASM Server</h1>
-			Self-ID:<input type="number" id="self-id" step="1" min="1" max="4" name="Server ID" value="1">
+			Self-ID:<input type="text" id="self-id" name="Server ID" value="1" disabled=true readonly>
 			
-			<button onClick="GetSelfID('self-id'); startSRV();" id="idButton">Assign</button>
-			Chat:<input type="text" id="text" name="charbox" value="Test">
+			<button onClick="GetSelfID('self-id'); this.disabled = true;" disabled=true id="idButton">Assign</button>
+
+            <button onClick="document.getElementById('self-id').value = 1; startSRV();" id="id1">Start Srv 1</button>
+            <button onClick="document.getElementById('self-id').value = 2; startSRV();" id="id2">Start Srv 2</button>
+            <button onClick="document.getElementById('self-id').value = 3; startSRV();" id="id3">Start Srv 3</button>
+            <button onClick="document.getElementById('self-id').value = 4; startSRV();" id="id4">Start Srv 4</button>
+
+			<!-- Chat:<input type="text" id="text" name="charbox" value="Test"> -->
             <p id="textbox">This is a test</p>
-			<button onClick="passUint8ArrayToGo();" id="SendButton">Send</button>
+			<!-- <button onClick="passUint8ArrayToGo();" id="SendButton">Send</button> -->
             <button onClick="assignHandler();" id="RecvButton">Assign</button>
 			<button onClick="run();" id="runButton">Run</button>
             <button onClick="startTraffic();" id="startButton" >Start Traffic</button>
+            <button onclick="restartWebRTCHandler();" id="restartButton">Restart WebRTC handler</button>
 	</body>
-    
-    <!-- <script> 
-        var id = document.getElementById("self-id").value;
-
-        function loadScripts() {
-            if (id == 1) {
-                var script = document.createElement('script');
-                script.setAttribute('src', 'server1.js');
-                document.head.appendChild(script);
-                var script = document.createElement('script');
-                script.setAttribute('src', 'server2.js');
-                document.head.appendChild(script);
-                var script = document.createElement('script');
-                script.setAttribute('src', 'server3.js');
-                document.head.appendChild(script);
-                window.onload = (event) => {
-                    console.log("Window loaded")
-                    startWebRTC();
-                    startWebRTC2();
-                    startWebRTC3();
-                };
-
-            } else if (id == 2) {
-                var script = document.createElement('script');
-                script.setAttribute('src', 'server1.js');
-                document.head.appendChild(script);
-                window.onload = e => function(){
-                    console.log("Window loaded")
-                    startWebRTC();
-                };
-            } else if (id == 3) {
-                var script = document.createElement('script');
-                script.setAttribute('src', 'server2.js');
-                document.head.appendChild(script);
-                window.onload = e => function(){
-                    console.log("Window loaded")
-                    startWebRTC2();
-                };
-            } else if (id == 4) {
-                var script = document.createElement('script');
-                script.setAttribute('src', 'server3.js');
-                document.head.appendChild(script);
-                window.onload = e => function(){
-                    console.log("Window loaded")
-                    startWebRTC3();
-                };
-            }
-        }
-
-    </script> -->
 
     <script>
+
+        function restartWebRTCHandler() {
+            var wsRestart = new WebSocket("ws://localhost:13371");
+            wsRestart.onopen = function() {
+                console.log("Web RTC Handler restarted!");
+            };
+        };
+
+
         function setText() {
             document.getElementById("textbox").innerHTML = readMsg;
         }
@@ -118,21 +91,6 @@
             PassUint8ArrayToGo(array_to_pass)
         }
         
-        /*function setUint8ArrayInGo(){
-
-        arraySize = new Uint8Array(10);
-        
-        GetArraySize(arraySize);
-        
-        
-        var size = new TextDecoder("utf-8").decode(arraySize);
-        var sizeint = parseInt(size);
-        console.log(size);
-
-        array_to_set = new Uint8Array(sizeint);
-        SetUint8ArrayInGo(array_to_set);
-        console.log(array_to_set);
-        };*/
 
     function readSendMsgs() {
         var arraySize = new Uint8Array(10);
@@ -159,6 +117,7 @@
 
     var intervalReadSendWASM;
 
+    var trafficStarted = false;
     function startTraffic() {
         intervalReadSendWASM = window.setInterval(function(){
             readSendMsgs();
@@ -167,15 +126,15 @@
 
     function assignHandler() {
         if (id == 1){
-            dc.onmessage = e => passMsgToGo(e.data);
-            dc2.onmessage = e => passMsgToGo(e.data);
-            dc3.onmessage = e => passMsgToGo(e.data);
+            dc.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; passMsgToGo(e.data);}
+            dc2.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; passMsgToGo(e.data);}
+            dc3.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; passMsgToGo(e.data);}
         } else if (id == 2) {
-            dc.onmessage = e => passMsgToGo(e.data);
+            dc.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; passMsgToGo(e.data);}
         } else if (id == 3) {
-            dc2.onmessage = e => passMsgToGo(e.data);
+            dc2.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; passMsgToGo(e.data);}
         } else if (id == 4) {
-            dc3.onmessage = e => passMsgToGo(e.data);
+            dc3.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; passMsgToGo(e.data);}
         }
     };
 
