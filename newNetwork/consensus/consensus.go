@@ -186,7 +186,7 @@ func (hs *chainedhotstuff) update(block *hotstuff.Block) {
 // Propose proposes the given command
 func (hs *chainedhotstuff) Propose() []byte {
 	hs.mut.Lock()
-	fmt.Println("Start to make proposal")
+	fmt.Println("Generating proposal")
 	// cmd := hs.commands.GetCommand()
 	// TODO: Should probably use channels/contexts here instead such that
 	// a proposal can be made a little later if a new command is added to the queue.
@@ -203,28 +203,28 @@ func (hs *chainedhotstuff) Propose() []byte {
 	c := hotstuff.Command(cmdStringSerial)
 	hs.ctr++
 
-	fmt.Print("bLeaf.GetView(): ")
-	fmt.Print(hs.bLeaf.GetView())
+	// fmt.Print("bLeaf.GetView(): ")
+	// fmt.Print(hs.bLeaf.GetView())
 	block := hotstuff.NewBlock(hs.bLeaf.Hash(), hs.highQC, c, hs.bLeaf.GetView()+1, hs.cfg.ID())
 
 	hs.blocks.Store(block)
 	hs.mut.Unlock()
-	fmt.Println(block.Parent.String())
-	parentBlock, _ := hs.blocks.Get(hs.bLeaf.Hash())
-	fmt.Println(parentBlock.Hash())
+	// fmt.Println(block.Parent.String())
+	// parentBlock, _ := hs.blocks.Get(hs.bLeaf.Hash())
+	// fmt.Println(parentBlock.Hash())
 
 	var bytes []byte
 	cmdString := "ID: " + strconv.FormatUint(uint64(hs.cfg.ID()), 10) + " Propose " + block.ToString()
 	// cmdByte, _ := hex.DecodeString(cmdString)
 	// bytes = append(bytes, cmdByte...)
-	fmt.Println(cmdString)
+	// fmt.Println(cmdString)
 	blockByte := []byte(cmdString)
-	fmt.Println(blockByte)
+	// fmt.Println(blockByte)
 	bytes = append(bytes, blockByte...)
 	// hs.cfg.Propose(bytes)
 	// self vote
 	// hs.OnPropose(block)
-	fmt.Println(bytes)
+	// fmt.Println(bytes)
 	return bytes
 }
 
@@ -240,12 +240,12 @@ func (hs *chainedhotstuff) NewView() {
 		hs.OnNewView(msg)
 		return
 	}
-	leader, ok := hs.cfg.Replica(leaderID)
-	if !ok {
-		// logger.Warnf("Replica with ID %d was not found!", leaderID)
-	}
+	// leader, ok := hs.cfg.Replica(leaderID)
+	// if !ok {
+	// 	// logger.Warnf("Replica with ID %d was not found!", leaderID)
+	// }
 	hs.mut.Unlock()
-	leader.NewView(msg)
+	// leader.NewView(msg)
 }
 
 // OnPropose handles an incoming proposal
@@ -259,7 +259,7 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 		return "", errors.New("OnPropose: block view was less than our view")
 	}
 
-	fmt.Println(block)
+	// fmt.Println(block)
 	qcBlock, haveQCBlock := hs.blocks.Get(block.QuorumCert().BlockHash())
 
 	safe := false
@@ -277,6 +277,7 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 			safe = true
 		} else {
 			// logger.Debug("OnPropose: safety condition failed")
+			fmt.Println("OnPropose: safety condition failed")
 		}
 	}
 
@@ -296,7 +297,7 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 	hs.synchronizer.OnPropose()
 
 	// cancel the last fetch
-	hs.fetchCancel()
+	// hs.fetchCancel()
 
 	pc, err := hs.signer.Sign(block)
 	if err != nil {
@@ -333,18 +334,18 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 	// finish()
 
 	pcString := pc.GetStringSignature() + ":" + pc.BlockHash().String()
-	fmt.Println(pcString)
+	// fmt.Println(pcString)
 	hs.mut.Unlock()
 	return pcString, nil
 }
 
 func (hs *chainedhotstuff) Finish(block *hotstuff.Block) {
 	// hs.mut.Lock()
-	fmt.Println("update begin")
+	// fmt.Println("update begin")
 	hs.update(block)
-	fmt.Println("Update done")
+	// fmt.Println("Update done")
 	hs.deliver(block)
-	fmt.Println("Deliver done")
+	// fmt.Println("Deliver done")
 	hs.pendingVotes = make(map[hotstuff.Hash][]hotstuff.PartialCert)
 	// hs.mut.Unlock()
 }
@@ -384,8 +385,8 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 		hs.mut.Unlock()
 	}()
 
-	fmt.Print("Get hash: ")
-	fmt.Println(cert.BlockHash())
+	// fmt.Print("Get hash: ")
+	// fmt.Println(cert.BlockHash())
 	block, ok := hs.blocks.Get(cert.BlockHash())
 	if !ok {
 		fmt.Println("Not ok")
@@ -393,12 +394,12 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 		hs.fetchBlockForVote(cert)
 		return
 	}
-	fmt.Println(block)
+	// fmt.Println(block)
 
 	hs.mut.Lock()
-	fmt.Println("View old and new: ")
-	fmt.Println(hs.bLeaf.GetView())
-	fmt.Println(block.GetView())
+	// fmt.Println("View old and new: ")
+	// fmt.Println(hs.bLeaf.GetView())
+	// fmt.Println(block.GetView())
 
 	if block.GetView() <= hs.bLeaf.GetView() {
 		// too old
@@ -437,9 +438,9 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 	hs.mut.Unlock()
 	// signal the synchronizer
 	hs.synchronizer.OnFinishQC()
-	fmt.Print("QC: ")
-	fmt.Println(qc)
-	fmt.Println("OnVoteDone")
+	// fmt.Print("QC: ")
+	// fmt.Println(qc)
+	// fmt.Println("OnVoteDone")
 }
 
 // OnNewView handles an incoming NewView
@@ -455,13 +456,13 @@ func (hs *chainedhotstuff) OnNewView(msg hotstuff.NewView) {
 		hs.mut.Unlock()
 	}()
 
-	fmt.Println("OnNewView Pre Lock")
+	// fmt.Println("OnNewView Pre Lock")
 	hs.mut.Lock()
-	fmt.Println("Post lock")
+	// fmt.Println("Post lock")
 	// logger.Debug("OnNewView: ", msg)
 
 	hs.updateHighQC(msg.QC)
-	fmt.Println("Updated QC")
+	// fmt.Println("Updated QC")
 
 	v, ok := hs.newView[msg.View]
 	if !ok {
@@ -477,7 +478,7 @@ func (hs *chainedhotstuff) OnNewView(msg hotstuff.NewView) {
 
 	hs.mut.Unlock()
 	// signal the synchronizer
-	fmt.Println("Call synchronizer")
+	// fmt.Println("Call synchronizer")
 	hs.synchronizer.OnNewView()
 }
 

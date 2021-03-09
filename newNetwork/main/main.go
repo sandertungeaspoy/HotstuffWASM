@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall/js"
@@ -44,7 +45,7 @@ func main() {
 
 	sendBytes = make([][]byte, 0)
 	recvBytes = make([][]byte, 0)
-	recieved = make(chan []byte, 16)
+	recieved = make(chan []byte, 32)
 	//Public keys
 	pubkeyString1 := "-----BEGIN HOTSTUFF PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEyaKwozY7C9LL4CAGyuY3gQvHrysu\nkW2YuGfGHvgumwRANtalltLIWEQ5OS2ewsR2xastcb/gzUBtyj54Mi1saw==\n-----END HOTSTUFF PUBLIC KEY-----"
 	pubBlock1, _ := pem.Decode([]byte(pubkeyString1))
@@ -156,7 +157,7 @@ func main() {
 	addr[4] = "127.0.0.1:13374"
 
 	leaderRotation := leaderrotation.NewFixed(hotstuff.ID(1))
-	pm := synchronizer.New(leaderRotation, time.Duration(100)*time.Second)
+	pm := synchronizer.New(leaderRotation, time.Duration(50)*time.Second)
 	var cfg *server.Config
 
 	srv := server.Server{
@@ -202,6 +203,7 @@ func main() {
 		fmt.Println("I am Leader")
 		for {
 			time.Sleep(time.Millisecond * 10)
+			fmt.Println("Waiting for reply from replicas or for new proposal to be made...")
 			select {
 			case msgByte := <-srv.Pm.Proposal:
 				fmt.Println("Read channel msg...")
@@ -222,21 +224,28 @@ func main() {
 				fmt.Print("Formated block: ")
 				fmt.Println(block)
 
-				fmt.Println("OnPropose")
-				fmt.Print(block.Parent)
+				fmt.Println("OnPropose...")
+				// fmt.Print(block.Parent)
 				pcString, err := srv.Hs.OnPropose(block)
 				if err != nil {
 					fmt.Println(err)
 				}
-				fmt.Println(senderID, cmd, pcString)
-				fmt.Println("Finish")
+				fmt.Print("SenderID: ")
+				fmt.Println(senderID)
+				fmt.Print("cmd: ")
+				fmt.Println(cmd)
+				fmt.Print("pcString: ")
+				fmt.Println(pcString)
+				// fmt.Println("Finish")
 				srv.Hs.Finish(block)
-				fmt.Println("Finish done")
+				// fmt.Println("Finish done")
 				pc := StringToPartialCert(pcString)
-				fmt.Println("OnVote")
+				fmt.Println("OnVote...")
 				srv.Hs.OnVote(pc)
-				fmt.Println("SendByte")
+				fmt.Println("Sending byte...")
+				fmt.Println(runtime.NumGoroutine())
 				sendBytes = append(sendBytes, msgByte)
+				fmt.Println("Bytes sent...")
 			case <-recieved:
 				fmt.Println("Recieved byte...")
 				// _, cmd, obj := FormatBytes(recvBytes[0])
@@ -244,8 +253,12 @@ func main() {
 				// 	continue
 				// }
 				pc := StringToPartialCert(string(recvBytes[0]))
+				if len(recvBytes) > 1 {
+					recvBytes = recvBytes[1:]
+				} else {
+					recvBytes = make([][]byte, 0)
+				}
 				srv.Hs.OnVote(pc)
-				recvBytes = recvBytes[1:]
 			case ok := <-srv.Pm.NewView:
 				fmt.Println("Timeout -> start new view")
 				if ok {
@@ -256,27 +269,26 @@ func main() {
 	} else {
 		fmt.Println("I am normal replica")
 		for {
-			time.Sleep(time.Millisecond * 10)
-			if len(recvBytes) != 0 {
+			time.Sleep(time.Millisecond * 100)
+			// fmt.Println("Waiting for proposal from leader...")
+			select {
+			case <-recieved:
 				fmt.Println("Recieved byte from leader...")
 				id, cmd, obj := FormatBytes(recvBytes[0])
+				if len(recvBytes) > 1 {
+					recvBytes = recvBytes[1:]
+				} else {
+					recvBytes = make([][]byte, 0)
+				}
 				if id == hotstuff.ID(0) || cmd != "Propose" {
 					continue
 				}
 				block := StringToBlock(obj)
-				// id, err := srv.GetID()
-				// if err != nil {
-				// 	panic(err)
-				// }
-				// block.Proposer = id
 				pcString, err := srv.Hs.OnPropose(block)
 				if err != nil {
-					panic(err)
+					fmt.Println(err)
 				}
-				// fmt.Println(senderID, cmd, pc)
-				srv.Hs.Finish(block)
 				sendBytes = append(sendBytes, []byte(pcString))
-				recvBytes = recvBytes[1:]
 			}
 		}
 	}
@@ -287,10 +299,10 @@ func FormatBytes(msg []byte) (id hotstuff.ID, cmd string, obj string) {
 	if len(msg) != 0 {
 		msgString := string(msg)
 		msgStringByte := strings.Split(msgString, " ")
-		fmt.Print("FormatBytes string: ")
-		fmt.Println(msgString)
-		fmt.Print("Byte of msg: ")
-		fmt.Println(msgStringByte[1])
+		// fmt.Print("FormatBytes string: ")
+		// fmt.Println(msgString)
+		// fmt.Print("Byte of msg: ")
+		// fmt.Println(msgStringByte[1])
 
 		idString, _ := strconv.ParseUint(msgStringByte[1], 10, 32)
 		id = hotstuff.ID(idString)
@@ -314,13 +326,13 @@ func StringToBlock(s string) *hotstuff.Block {
 	// parent, _ := base64.RawStdEncoding.DecodeString(strByte[1])
 	// parent := []byte(strByte[1])
 	parent, _ := hex.DecodeString(strByte[1])
-	fmt.Println(parent)
+	// fmt.Println(parent)
 	var p [32]byte
 	copy(p[:], parent)
-	fmt.Print("p: ")
-	fmt.Println(p)
+	// fmt.Print("p: ")
+	// fmt.Println(p)
 	parent2 := hotstuff.Hash(p)
-	fmt.Print("Parent hash: ")
+	// fmt.Print("Parent hash: ")
 	// fmt.Println(parent2)
 	proposer, _ := strconv.ParseUint(strByte[2], 10, 32)
 	cmd := hotstuff.Command(strByte[3])
@@ -334,8 +346,8 @@ func StringToBlock(s string) *hotstuff.Block {
 	sigString := strByte[4]
 
 	sigBytes := strings.Split(sigString, "\n")
-	fmt.Print("SigString:")
-	fmt.Println(sigString)
+	// fmt.Print("SigString:")
+	// fmt.Println(sigString)
 	if sigString != "" {
 		for i := 0; i < len(sigBytes)-1; i++ {
 			m := strings.Split(sigBytes[i], "=")
@@ -367,11 +379,11 @@ func StringToBlock(s string) *hotstuff.Block {
 
 // StringToPartialCert returns a PartialCert from a string
 func StringToPartialCert(s string) hotstuff.PartialCert {
-	fmt.Println(s)
+	// fmt.Println(s)
 	strByte := strings.Split(s, ":")
 
 	signString := strings.Split(strByte[0], "-")
-	fmt.Println(signString)
+	// fmt.Println(signString)
 	rInt := new(big.Int)
 	rInt.SetString(signString[0], 0)
 	sInt := new(big.Int)
@@ -386,8 +398,8 @@ func StringToPartialCert(s string) hotstuff.PartialCert {
 	copy(h[:], hash)
 	hash2 := hotstuff.Hash(h)
 	var pc hotstuff.PartialCert = hsecdsa.NewPartialCert(&sign, hash2)
-	fmt.Print("Pc created: ")
-	fmt.Println(pc)
+	// fmt.Print("Pc created: ")
+	// fmt.Println(pc)
 	return pc
 }
 

@@ -3,7 +3,6 @@ package blockchain
 
 import (
 	"container/list"
-	"fmt"
 	"sync"
 
 	hotstuff "github.com/HotstuffWASM/newNetwork"
@@ -52,7 +51,6 @@ func (chain *blockChain) Get(hash hotstuff.Hash) (*hotstuff.Block, bool) {
 	chain.mut.Lock()
 	defer chain.mut.Unlock()
 
-	fmt.Print("Inside get")
 	elem, ok := chain.Blocks[hash]
 	if !ok {
 		return nil, false
