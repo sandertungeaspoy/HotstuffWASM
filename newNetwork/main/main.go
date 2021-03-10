@@ -29,9 +29,14 @@ var sendBytes [][]byte
 var recvBytes [][]byte
 var serverID hotstuff.ID = 0
 var recieved chan []byte
+var conn net.Conn
+var conn2 net.Conn
+var conn3 net.Conn
+var conn4 net.Conn
 
 func main() {
 	// registerCallbacks()
+
 	idString := os.Args[1]
 	idUint, _ := strconv.ParseUint(idString, 10, 32)
 	serverID = hotstuff.ID(idUint)
@@ -159,26 +164,35 @@ func main() {
 	addr[4] = "127.0.0.1:13374"
 
 	if idUint == 1 {
-		go func() {
-			lis, errL := net.Listen("tcp", addr[idUint])
-			if errL != nil {
-				fmt.Println(errL)
-			}
-			for {
-				fmt.Println("Waiting for conn")
-				conn, err := lis.Accept()
-				if err != nil {
-					fmt.Println(err)
-				}
-				go handleConn(conn)
-			}
-		}()
-	} else {
-		conn, err := net.Dial("tcp", addr[1])
+		lis, errL := net.Listen("tcp", addr[1])
+		if errL != nil {
+			fmt.Println(errL)
+		}
+		fmt.Println("Waiting for conn2")
+		var err error
+		conn2, err = lis.Accept()
 		if err != nil {
 			fmt.Println(err)
 		}
-		go handleConn(conn)
+		fmt.Println("Waiting for conn3")
+		conn3, err = lis.Accept()
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println("Waiting for conn4")
+		conn4, err = lis.Accept()
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		go handleConn()
+	} else {
+		var err error
+		conn, err = net.Dial("tcp", addr[1])
+		if err != nil {
+			fmt.Println(err)
+		}
+		go handleConn()
 	}
 
 	leaderRotation := leaderrotation.NewFixed(hotstuff.ID(1))
@@ -487,31 +501,88 @@ func StringToPartialCert(s string) hotstuff.PartialCert {
 // 	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))
 // }
 
-func handleConn(conn net.Conn) {
-	go func() {
-		var msg []byte
-		for {
-			if len(sendBytes) > 1 {
-				msg, sendBytes = sendBytes[0], sendBytes[1:]
-				conn.Write(msg)
-			} else if len(sendBytes) == 1 {
-				msg, sendBytes = sendBytes[0], make([][]byte, 0)
-				conn.Write(msg)
+func handleConn() {
+	if int(serverID) == 1 {
+		go func() {
+			var msg []byte
+			for {
+				if len(sendBytes) > 1 {
+					msg, sendBytes = sendBytes[0], sendBytes[1:]
+					conn2.Write(msg)
+					conn3.Write(msg)
+					conn4.Write(msg)
+				} else if len(sendBytes) == 1 {
+					msg, sendBytes = sendBytes[0], make([][]byte, 0)
+					conn2.Write(msg)
+					conn3.Write(msg)
+					conn4.Write(msg)
+				}
 			}
-		}
 
-	}()
+		}()
 
-	go func() {
-		for {
-			buff := make([]byte, 4096)
-			n, _ := conn.Read(buff)
-			if n > 0 {
-				res := make([]byte, n)
-				copy(res, buff[:n])
-				recvBytes = append(recvBytes, res)
-				recieved <- res
+		go func() {
+			for {
+				buff := make([]byte, 4096)
+				n, _ := conn2.Read(buff)
+				if n > 0 {
+					res := make([]byte, n)
+					copy(res, buff[:n])
+					recvBytes = append(recvBytes, res)
+					recieved <- res
+				}
 			}
-		}
-	}()
+		}()
+		go func() {
+			for {
+				buff := make([]byte, 4096)
+				n, _ := conn3.Read(buff)
+				if n > 0 {
+					res := make([]byte, n)
+					copy(res, buff[:n])
+					recvBytes = append(recvBytes, res)
+					recieved <- res
+				}
+			}
+		}()
+		go func() {
+			for {
+				buff := make([]byte, 4096)
+				n, _ := conn4.Read(buff)
+				if n > 0 {
+					res := make([]byte, n)
+					copy(res, buff[:n])
+					recvBytes = append(recvBytes, res)
+					recieved <- res
+				}
+			}
+		}()
+	} else {
+		go func() {
+			var msg []byte
+			for {
+				if len(sendBytes) > 1 {
+					msg, sendBytes = sendBytes[0], sendBytes[1:]
+					conn.Write(msg)
+				} else if len(sendBytes) == 1 {
+					msg, sendBytes = sendBytes[0], make([][]byte, 0)
+					conn.Write(msg)
+				}
+			}
+
+		}()
+
+		go func() {
+			for {
+				buff := make([]byte, 4096)
+				n, _ := conn.Read(buff)
+				if n > 0 {
+					res := make([]byte, n)
+					copy(res, buff[:n])
+					recvBytes = append(recvBytes, res)
+					recieved <- res
+				}
+			}
+		}()
+	}
 }
