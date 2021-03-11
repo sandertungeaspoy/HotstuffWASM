@@ -17,7 +17,10 @@ function dcInit3() {
 }
 
 function createOffer3() {
-    dcInit3(dc3 = pc3.createDataChannel("chat"));
+    options = 
+    dcInit3(dc3 = pc3.createDataChannel("chat", {
+        maxRetransmits: 16
+    }));
     pc3.createOffer().then(d => pc3.setLocalDescription(d));
     pc3.onicecandidate = e3 => {
     pc3.addEventListener("icegatheringstatechange", ev => {

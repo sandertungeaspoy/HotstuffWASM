@@ -206,6 +206,8 @@ func (hs *chainedhotstuff) Propose() []byte {
 	// fmt.Print("bLeaf.GetView(): ")
 	// fmt.Print(hs.bLeaf.GetView())
 	block := hotstuff.NewBlock(hs.bLeaf.Hash(), hs.highQC, c, hs.bLeaf.GetView()+1, hs.cfg.ID())
+	fmt.Print("Propose on view: ")
+	fmt.Println(hs.bLeaf.View + 1)
 
 	hs.blocks.Store(block)
 	hs.mut.Unlock()
@@ -245,8 +247,6 @@ func (hs *chainedhotstuff) NewView() hotstuff.NewView {
 	// }
 	hs.mut.Unlock()
 	// leader.NewView(msg)
-	fmt.Print("Generetating new view msg: ")
-	fmt.Println(msg)
 	return msg
 }
 
@@ -465,22 +465,17 @@ func (hs *chainedhotstuff) OnNewView(msg hotstuff.NewView) {
 	fmt.Println("OnNewView: ", msg)
 
 	hs.updateHighQC(msg.QC)
-	// fmt.Println("Updated QC")
 
 	v, ok := hs.newView[msg.View]
-	fmt.Println("Get existing: ")
-	fmt.Println(v)
 	if !ok {
 		v = make(map[hotstuff.ID]struct{})
 	}
 	v[msg.ID] = struct{}{}
-	fmt.Print("v: ")
-	fmt.Println(v)
 	hs.newView[msg.View] = v
-	fmt.Println(hs.newView)
 
-	if len(v) < hs.cfg.QuorumSize() {
+	if len(hs.newView[msg.View]) < hs.cfg.QuorumSize() {
 		hs.mut.Unlock()
+		fmt.Println("Not quorum for newView")
 		return
 	}
 

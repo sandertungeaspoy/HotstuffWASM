@@ -126,15 +126,15 @@
 
     function assignHandler() {
         if (id == 1){
-            dc.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; passMsgToGo(e.data);}
-            dc2.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; passMsgToGo(e.data);}
-            dc3.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; passMsgToGo(e.data);}
+            dc.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; console.log(e.data); passMsgToGo(e.data);}
+            dc2.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; console.log(e.data); passMsgToGo(e.data);}
+            dc3.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; console.log(e.data); passMsgToGo(e.data);}
         } else if (id == 2) {
-            dc.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; passMsgToGo(e.data);}
+            dc.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; console.log(e.data); passMsgToGo(e.data);}
         } else if (id == 3) {
-            dc2.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; passMsgToGo(e.data);}
+            dc2.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; console.log(e.data); passMsgToGo(e.data);}
         } else if (id == 4) {
-            dc3.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; passMsgToGo(e.data);}
+            dc3.onmessage = e => {if (!trafficStarted) {startTraffic(); trafficStarted = true;}; console.log(e.data); passMsgToGo(e.data);}
         }
     };
 

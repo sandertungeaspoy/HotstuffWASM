@@ -8,9 +8,9 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
-	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall/js"
 
 	// "syscall/js"
@@ -29,6 +29,8 @@ var sendBytes [][]byte
 var recvBytes [][]byte
 var serverID hotstuff.ID = 0
 var recieved chan []byte
+var recvLock sync.Mutex
+var sendLock sync.Mutex
 
 func main() {
 	registerCallbacks()
@@ -206,9 +208,10 @@ func main() {
 			fmt.Println("Waiting for reply from replicas or for new proposal to be made...")
 			select {
 			case msgByte := <-srv.Pm.Proposal:
-				fmt.Println("Read channel msg...")
+				// fmt.Println("Read channel msg...")
 				// fmt.Println(msgByte)
 				senderID, cmd, obj := FormatBytes(msgByte)
+				blockString := msgByte
 				// fmt.Println("FormatBytes result: ")
 				// fmt.Print("SenderID: ")
 				// fmt.Println(senderID)
@@ -243,8 +246,11 @@ func main() {
 				fmt.Println("OnVote...")
 				srv.Hs.OnVote(pc)
 				fmt.Println("Sending byte...")
-				fmt.Println(runtime.NumGoroutine())
-				sendBytes = append(sendBytes, msgByte)
+				// fmt.Println(runtime.NumGoroutine())
+				sendLock.Lock()
+				sendBytes = append(sendBytes, blockString)
+				sendLock.Unlock()
+				// fmt.Println(sendBytes)
 				fmt.Println("Bytes sent...")
 			case <-recieved:
 				fmt.Println("Recieved byte...")
@@ -252,29 +258,37 @@ func main() {
 				// if cmd != " PartialCert " {
 				// 	continue
 				// }
+				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
+				recvLock.Unlock()
 				if newView[0] == "NewView" {
 					fmt.Println("Recieved timeout from replica")
+					recvLock.Lock()
 					msg := StringToNewView(string(recvBytes[0]))
-					fmt.Println(msg)
+					recvLock.Unlock()
+					// fmt.Println(msg)
 					srv.Hs.OnNewView(msg)
+					recvLock.Lock()
 					if len(recvBytes) > 1 {
 						recvBytes = recvBytes[1:]
 					} else {
 						recvBytes = make([][]byte, 0)
 					}
-					fmt.Print("RecvBytes: ")
-					fmt.Println(recvBytes)
+					recvLock.Unlock()
+					// fmt.Print("RecvBytes: ")
+					// fmt.Println(recvBytes)
 					continue
 				}
+				recvLock.Lock()
 				pc := StringToPartialCert(string(recvBytes[0]))
 				if len(recvBytes) > 1 {
 					recvBytes = recvBytes[1:]
 				} else {
 					recvBytes = make([][]byte, 0)
 				}
-				fmt.Print("RecvBytes: ")
-				fmt.Println(recvBytes)
+				recvLock.Unlock()
+				// fmt.Print("RecvBytes: ")
+				// fmt.Println(recvBytes)
 				srv.Hs.OnVote(pc)
 				// case ok := <-srv.Pm.NewView:
 				// 	fmt.Println("Timeout -> start new view")
@@ -286,19 +300,21 @@ func main() {
 	} else {
 		fmt.Println("I am normal replica")
 		for {
-			time.Sleep(time.Millisecond * 100)
-			// fmt.Println("Waiting for proposal from leader...")
+			// time.Sleep(time.Millisecond * 100)
+			fmt.Println("Waiting for proposal from leader...")
 			select {
 			case <-recieved:
 				fmt.Println("Recieved byte from leader...")
+				recvLock.Lock()
 				id, cmd, obj := FormatBytes(recvBytes[0])
 				if len(recvBytes) > 1 {
 					recvBytes = recvBytes[1:]
 				} else {
 					recvBytes = make([][]byte, 0)
 				}
-				fmt.Print("RecvBytes: ")
-				fmt.Println(recvBytes)
+				recvLock.Unlock()
+				// fmt.Print("RecvBytes: ")
+				// fmt.Println(recvBytes)
 				if id == hotstuff.ID(0) || cmd != "Propose" {
 					continue
 				}
@@ -312,12 +328,16 @@ func main() {
 				}
 				srv.Hs.Finish(block)
 				fmt.Println("Sending PC to leader...")
+				sendLock.Lock()
 				sendBytes = append(sendBytes, []byte(pcString))
+				sendLock.Unlock()
 			case <-srv.Pm.NewView:
 				timeoutview := srv.Hs.NewView()
 				msg := NewViewToString(timeoutview)
 				fmt.Println("Sending timeout msg to leader...")
+				sendLock.Lock()
 				sendBytes = append(sendBytes, []byte(msg))
+				sendLock.Unlock()
 			}
 		}
 	}
@@ -493,14 +513,14 @@ func GetSelfID(this js.Value, i []js.Value) interface{} {
 
 // PassUint8ArrayToGo passes array
 func PassUint8ArrayToGo(this js.Value, args []js.Value) interface{} {
-
+	fmt.Println("recieved func()")
 	recv := make([]byte, args[0].Get("length").Int())
 
 	_ = js.CopyBytesToGo(recv, args[0])
 
+	recvLock.Lock()
 	recvBytes = append(recvBytes, recv)
-	fmt.Print("JS recvBytes: ")
-	fmt.Println(recvBytes)
+	recvLock.Unlock()
 	recieved <- recv
 
 	return nil
@@ -508,21 +528,28 @@ func PassUint8ArrayToGo(this js.Value, args []js.Value) interface{} {
 
 // SetUint8ArrayInGo sets array
 func SetUint8ArrayInGo(this js.Value, args []js.Value) interface{} {
-
+	sendLock.Lock()
 	if len(sendBytes) == 0 {
+		sendLock.Unlock()
+		return nil
+	}
+
+	if args[0].Get("length").Int() == 0 {
+		sendLock.Unlock()
 		return nil
 	}
 
 	var msg []byte
-
 	if len(sendBytes) > 1 {
 		msg, sendBytes = sendBytes[0], sendBytes[1:]
 	} else {
 		msg, sendBytes = sendBytes[0], make([][]byte, 0)
 	}
+	sendLock.Unlock()
 	if msg == nil {
 		return nil
 	}
+	// fmt.Println("Sending bytes to JS")
 	_ = js.CopyBytesToJS(args[0], msg)
 
 	return nil
@@ -530,14 +557,15 @@ func SetUint8ArrayInGo(this js.Value, args []js.Value) interface{} {
 
 // GetArraySize gets the array size
 func GetArraySize(this js.Value, args []js.Value) interface{} {
-
+	sendLock.Lock()
 	if len(sendBytes) == 0 {
+		sendLock.Unlock()
 		return nil
 	}
 	size := make([]byte, 10)
 
 	msgSize := []byte(strconv.Itoa(len(sendBytes[0])))
-
+	sendLock.Unlock()
 	copy(size, msgSize)
 
 	_ = js.CopyBytesToJS(args[0], size)

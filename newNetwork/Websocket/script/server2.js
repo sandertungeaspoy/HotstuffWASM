@@ -17,7 +17,9 @@ function dcInit2() {
 }
 
 function createOffer2() {
-    dcInit2(dc2 = pc2.createDataChannel("chat"));
+    dcInit2(dc2 = pc2.createDataChannel("chat", {
+        maxRetransmits: 16
+    }));
     pc2.createOffer().then(d2 => pc2.setLocalDescription(d2));
     pc2.onicecandidate = e2 => {
         pc2.addEventListener("icegatheringstatechange", ev => {

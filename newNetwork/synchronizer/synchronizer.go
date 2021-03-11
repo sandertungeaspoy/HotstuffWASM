@@ -123,13 +123,15 @@ func (s *Synchronizer) newViewTimeout() {
 			fmt.Println("Timeout")
 			s.hs.CreateDummy()
 			if s.GetLeader(s.hs.Leaf().View) == s.hs.Config().ID() {
-				go func() {
-					msg := s.hs.NewView()
-					s.hs.OnNewView(msg)
-				}()
+				// go func() {
+
+				// }()
+				msg := s.hs.NewView()
+				s.hs.OnNewView(msg)
 			} else {
 				s.NewView <- true
 			}
+			fmt.Println("Resetting timer...")
 			s.mut.Lock()
 			s.timer.Reset(s.timeout)
 			s.mut.Unlock()
