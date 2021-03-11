@@ -69,10 +69,10 @@ func (s *Synchronizer) Start() {
 		// fmt.Println("Proposed on channel")
 	}
 	s.timer = time.NewTimer(s.timeout)
-	var ctx context.Context
-	ctx, s.stop = context.WithCancel(context.Background())
+	// var ctx context.Context
+	// ctx, s.stop = context.WithCancel(context.Background())
 	go func() {
-		s.newViewTimeout(ctx)
+		s.newViewTimeout()
 	}()
 }
 
@@ -113,19 +113,22 @@ func (s *Synchronizer) beat() {
 	}()
 }
 
-func (s *Synchronizer) newViewTimeout(ctx context.Context) {
+func (s *Synchronizer) newViewTimeout() {
 	for {
 		// time.Sleep(time.Millisecond * 10)
 		select {
-		case <-ctx.Done():
-			return
+		// case <-ctx.Done():
+		// 	return
 		case <-s.timer.C:
 			fmt.Println("Timeout")
 			s.hs.CreateDummy()
 			if s.GetLeader(s.hs.Leaf().View) == s.hs.Config().ID() {
 				go func() {
-					s.NewView <- true
+					msg := s.hs.NewView()
+					s.hs.OnNewView(msg)
 				}()
+			} else {
+				s.NewView <- true
 			}
 			s.mut.Lock()
 			s.timer.Reset(s.timeout)

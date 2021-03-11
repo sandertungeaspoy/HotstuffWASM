@@ -247,7 +247,7 @@ type Consensus interface {
 	// Propose starts a new proposal. The command is fetched from the command queue.
 	Propose() []byte
 	// NewView sends a NewView message to the next leader.
-	NewView()
+	NewView() NewView
 	// OnPropose handles an incoming proposal.
 	// A leader should call this method on itself.
 	OnPropose(block *Block) (pc string, err error)

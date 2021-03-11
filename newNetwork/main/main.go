@@ -209,20 +209,20 @@ func main() {
 				fmt.Println("Read channel msg...")
 				// fmt.Println(msgByte)
 				senderID, cmd, obj := FormatBytes(msgByte)
-				fmt.Println("FormatBytes result: ")
-				fmt.Print("SenderID: ")
-				fmt.Println(senderID)
-				fmt.Print("cmd: ")
-				fmt.Println(cmd)
-				fmt.Print("obj: ")
-				fmt.Println(obj)
+				// fmt.Println("FormatBytes result: ")
+				// fmt.Print("SenderID: ")
+				// fmt.Println(senderID)
+				// fmt.Print("cmd: ")
+				// fmt.Println(cmd)
+				// fmt.Print("obj: ")
+				// fmt.Println(obj)
 				if senderID != srv.ID && cmd != "Propose" {
 					continue
 				}
 				fmt.Println("Formating string to block...")
 				block := StringToBlock(obj)
-				fmt.Print("Formated block: ")
-				fmt.Println(block)
+				// fmt.Print("Formated block: ")
+				// fmt.Println(block)
 
 				fmt.Println("OnPropose...")
 				// fmt.Print(block.Parent)
@@ -230,12 +230,12 @@ func main() {
 				if err != nil {
 					fmt.Println(err)
 				}
-				fmt.Print("SenderID: ")
-				fmt.Println(senderID)
-				fmt.Print("cmd: ")
-				fmt.Println(cmd)
-				fmt.Print("pcString: ")
-				fmt.Println(pcString)
+				// fmt.Print("SenderID: ")
+				// fmt.Println(senderID)
+				// fmt.Print("cmd: ")
+				// fmt.Println(cmd)
+				// fmt.Print("pcString: ")
+				// fmt.Println(pcString)
 				// fmt.Println("Finish")
 				srv.Hs.Finish(block)
 				// fmt.Println("Finish done")
@@ -252,18 +252,35 @@ func main() {
 				// if cmd != " PartialCert " {
 				// 	continue
 				// }
+				newView := strings.Split(string(recvBytes[0]), ":")
+				if newView[0] == "NewView" {
+					fmt.Println("Recieved timeout from replica")
+					msg := StringToNewView(string(recvBytes[0]))
+					fmt.Println(msg)
+					srv.Hs.OnNewView(msg)
+					if len(recvBytes) > 1 {
+						recvBytes = recvBytes[1:]
+					} else {
+						recvBytes = make([][]byte, 0)
+					}
+					fmt.Print("RecvBytes: ")
+					fmt.Println(recvBytes)
+					continue
+				}
 				pc := StringToPartialCert(string(recvBytes[0]))
 				if len(recvBytes) > 1 {
 					recvBytes = recvBytes[1:]
 				} else {
 					recvBytes = make([][]byte, 0)
 				}
+				fmt.Print("RecvBytes: ")
+				fmt.Println(recvBytes)
 				srv.Hs.OnVote(pc)
-			case ok := <-srv.Pm.NewView:
-				fmt.Println("Timeout -> start new view")
-				if ok {
-					srv.Hs.NewView()
-				}
+				// case ok := <-srv.Pm.NewView:
+				// 	fmt.Println("Timeout -> start new view")
+				// 	if ok {
+				// 		srv.Hs.NewView()
+				// 	}
 			}
 		}
 	} else {
@@ -280,15 +297,27 @@ func main() {
 				} else {
 					recvBytes = make([][]byte, 0)
 				}
+				fmt.Print("RecvBytes: ")
+				fmt.Println(recvBytes)
 				if id == hotstuff.ID(0) || cmd != "Propose" {
 					continue
 				}
 				block := StringToBlock(obj)
+				fmt.Print("Handle propose for view: ")
+				fmt.Println(block.View)
 				pcString, err := srv.Hs.OnPropose(block)
 				if err != nil {
 					fmt.Println(err)
+					continue
 				}
+				srv.Hs.Finish(block)
+				fmt.Println("Sending PC to leader...")
 				sendBytes = append(sendBytes, []byte(pcString))
+			case <-srv.Pm.NewView:
+				timeoutview := srv.Hs.NewView()
+				msg := NewViewToString(timeoutview)
+				fmt.Println("Sending timeout msg to leader...")
+				sendBytes = append(sendBytes, []byte(msg))
 			}
 		}
 	}
@@ -403,6 +432,55 @@ func StringToPartialCert(s string) hotstuff.PartialCert {
 	return pc
 }
 
+// StringToNewView converts the string to a NewView message
+func StringToNewView(s string) hotstuff.NewView {
+	stringByte := strings.Split(s, ":")
+	fmt.Print("ViewString: ")
+	fmt.Println(s)
+	fmt.Print("ViewByte: ")
+	fmt.Println(stringByte)
+	viewID, _ := strconv.ParseUint(stringByte[1], 10, 32)
+
+	view, _ := strconv.ParseUint(stringByte[2], 10, 32)
+
+	certHash, _ := hex.DecodeString(stringByte[4])
+	var c [32]byte
+	copy(c[:], certHash)
+	certHash2 := hotstuff.Hash(c)
+	var sig map[hotstuff.ID]*hsecdsa.Signature
+	sig = make(map[hotstuff.ID]*hsecdsa.Signature)
+	sigString := stringByte[3]
+
+	sigBytes := strings.Split(sigString, "\n")
+	// fmt.Print("SigString:")
+	// fmt.Println(sigString)
+	if sigString != "" {
+		for i := 0; i < len(sigBytes)-1; i++ {
+			m := strings.Split(sigBytes[i], "=")
+			id, _ := strconv.ParseUint(m[0], 10, 32)
+			signString := strings.Split(m[1], "-")
+			rInt := new(big.Int)
+			rInt.SetString(signString[0], 0)
+			sInt := new(big.Int)
+			sInt.SetString(signString[1], 0)
+			signer, _ := strconv.ParseUint(signString[2], 10, 32)
+			sign := *hsecdsa.NewSignature(rInt, sInt, hotstuff.ID(signer))
+			sig[hotstuff.ID(id)] = &sign
+		}
+	}
+
+	var cert hotstuff.QuorumCert = hsecdsa.NewQuorumCert(sig, certHash2)
+
+	newView := hotstuff.NewView{ID: hotstuff.ID(viewID), View: hotstuff.View(view), QC: cert}
+	return newView
+}
+
+// NewViewToString returns the NewView message as a string
+func NewViewToString(view hotstuff.NewView) string {
+	msg := "NewView:" + strconv.FormatUint(uint64(view.ID), 10) + ":" + strconv.FormatUint(uint64(view.View), 10) + ":" + view.QC.GetStringSignatures() + ":" + view.QC.BlockHash().String()
+	return msg
+}
+
 // GetSelfID gets the ID of the server
 func GetSelfID(this js.Value, i []js.Value) interface{} {
 	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
@@ -421,6 +499,8 @@ func PassUint8ArrayToGo(this js.Value, args []js.Value) interface{} {
 	_ = js.CopyBytesToGo(recv, args[0])
 
 	recvBytes = append(recvBytes, recv)
+	fmt.Print("JS recvBytes: ")
+	fmt.Println(recvBytes)
 	recieved <- recv
 
 	return nil

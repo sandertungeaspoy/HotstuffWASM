@@ -228,7 +228,7 @@ func (hs *chainedhotstuff) Propose() []byte {
 	return bytes
 }
 
-func (hs *chainedhotstuff) NewView() {
+func (hs *chainedhotstuff) NewView() hotstuff.NewView {
 	// logger.Debug("NewView")
 	hs.mut.Lock()
 	msg := hotstuff.NewView{ID: hs.cfg.ID(), View: hs.bLeaf.GetView(), QC: hs.highQC}
@@ -237,8 +237,7 @@ func (hs *chainedhotstuff) NewView() {
 		hs.mut.Unlock()
 		// TODO: Is this necessary
 		fmt.Println("Leader OnNewView")
-		hs.OnNewView(msg)
-		return
+		return msg
 	}
 	// leader, ok := hs.cfg.Replica(leaderID)
 	// if !ok {
@@ -246,6 +245,9 @@ func (hs *chainedhotstuff) NewView() {
 	// }
 	hs.mut.Unlock()
 	// leader.NewView(msg)
+	fmt.Print("Generetating new view msg: ")
+	fmt.Println(msg)
+	return msg
 }
 
 // OnPropose handles an incoming proposal
@@ -433,6 +435,7 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 		fmt.Println("OnVote: could not create QC for block: ", err)
 	}
 	delete(hs.verifiedVotes, cert.BlockHash())
+	fmt.Println("Update HighQC")
 	hs.updateHighQC(qc)
 
 	hs.mut.Unlock()
@@ -459,22 +462,27 @@ func (hs *chainedhotstuff) OnNewView(msg hotstuff.NewView) {
 	// fmt.Println("OnNewView Pre Lock")
 	hs.mut.Lock()
 	// fmt.Println("Post lock")
-	// logger.Debug("OnNewView: ", msg)
+	fmt.Println("OnNewView: ", msg)
 
 	hs.updateHighQC(msg.QC)
 	// fmt.Println("Updated QC")
 
 	v, ok := hs.newView[msg.View]
+	fmt.Println("Get existing: ")
+	fmt.Println(v)
 	if !ok {
 		v = make(map[hotstuff.ID]struct{})
 	}
 	v[msg.ID] = struct{}{}
+	fmt.Print("v: ")
+	fmt.Println(v)
 	hs.newView[msg.View] = v
+	fmt.Println(hs.newView)
 
-	// if len(v) < hs.cfg.QuorumSize() {
-	// 	hs.mut.Unlock()
-	// 	return
-	// }
+	if len(v) < hs.cfg.QuorumSize() {
+		hs.mut.Unlock()
+		return
+	}
 
 	hs.mut.Unlock()
 	// signal the synchronizer
