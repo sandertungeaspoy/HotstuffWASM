@@ -431,6 +431,8 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 	if err != nil {
 		// logger.Info("OnVote: could not create QC for block: ", err)
 		fmt.Println("OnVote: could not create QC for block: ", err)
+		hs.mut.Unlock()
+		return
 	}
 	delete(hs.verifiedVotes, cert.BlockHash())
 	hs.updateHighQC(qc)

@@ -1,0 +1,51 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "compounds": [
+        {
+            "name": "4Servers",
+            "configurations": ["Server1", "Server2", "Server3", "Server4"]
+        }
+    ],
+    "configurations": [
+        {
+            "name": "Server1",
+            "type": "go",
+            "request": "launch",
+            "mode": "exec",
+            "program": "${workspaceFolder}\\main\\main.exe",
+            "args": ["1"]
+        },
+        {
+            "name": "Server2",
+            "type": "go",
+            "request": "launch",
+            "mode": "exec",
+            "program": "${workspaceFolder}\\main\\main.exe",
+            "args": ["2"],
+            "preLaunchTask": "Sleepdelay"
+        },
+        {
+            "name": "Server3",
+            "type": "go",
+            "request": "launch",
+            "mode": "exec",
+            "program": "${workspaceFolder}\\main\\main.exe",
+            "args": ["3"],
+            "preLaunchTask": "Sleepdelay"
+        },
+        {
+            "name": "Server4",
+            "type": "go",
+            "request": "launch",
+            "mode": "exec",
+            "program": "${workspaceFolder}\\main\\main.exe",
+            "args": ["4"],
+            "preLaunchTask": "Sleepdelay"
+        }
+
+
+    ]
+}

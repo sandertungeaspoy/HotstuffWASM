@@ -69,10 +69,10 @@ func (s *Synchronizer) Start() {
 		// fmt.Println("Proposed on channel")
 	}
 	s.timer = time.NewTimer(s.timeout)
-	var ctx context.Context
-	ctx, s.stop = context.WithCancel(context.Background())
+	// var ctx context.Context
+	// ctx, s.stop = context.WithCancel(context.Background())
 	go func() {
-		s.newViewTimeout(ctx)
+		s.newViewTimeout()
 	}()
 }
 
@@ -107,24 +107,28 @@ func (s *Synchronizer) beat() {
 	}
 	fmt.Println("Propose again...")
 	s.lastBeat = view
-	s.mut.Unlock()
+
 	go func() {
 		s.Proposal <- s.hs.Propose()
 	}()
+	s.mut.Unlock()
 }
 
-func (s *Synchronizer) newViewTimeout(ctx context.Context) {
+func (s *Synchronizer) newViewTimeout() {
 	for {
 		// time.Sleep(time.Millisecond * 10)
 		select {
-		case <-ctx.Done():
-			return
+		// case <-ctx.Done():
+		// 	return
 		case <-s.timer.C:
 			fmt.Println("Timeout")
+			// s.mut.Lock()
 			s.hs.CreateDummy()
+			// s.mut.Unlock()
 			if s.GetLeader(s.hs.Leaf().View) == s.hs.Config().ID() {
 				go func() {
-					s.NewView <- true
+					// s.NewView <- true
+					s.hs.NewView()
 				}()
 			}
 			s.mut.Lock()
