@@ -579,18 +579,19 @@ func SetUint8ArrayInGo(this js.Value, args []js.Value) interface{} {
 
 // GetArraySize gets the array size
 func GetArraySize(this js.Value, args []js.Value) interface{} {
-	sendLock.Lock()
+
 	if len(sendBytes) == 0 {
-		sendLock.Unlock()
+		_ = js.CopyBytesToJS(args[1], []byte{0})
 		return nil
 	}
 	size := make([]byte, 10)
 
 	msgSize := []byte(strconv.Itoa(len(sendBytes[0])))
-	sendLock.Unlock()
+
 	copy(size, msgSize)
 
 	_ = js.CopyBytesToJS(args[0], size)
+	_ = js.CopyBytesToJS(args[1], []byte{1})
 
 	return nil
 }
@@ -616,4 +617,12 @@ func registerCallbacks() {
 	js.Global().Set("PassUint8ArrayToGo", js.FuncOf(PassUint8ArrayToGo))
 	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
 	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))
+}
+
+// defer elapsed("GetSelfID")()
+func elapsed(what string) func() {
+	start := time.Now()
+	return func() {
+		fmt.Printf("%s took %v\n", what, time.Since(start))
+	}
 }

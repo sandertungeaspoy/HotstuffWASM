@@ -94,28 +94,35 @@
         }
         
 
-    function readSendMsgs() {
-        var arraySize = new Uint8Array(10);
-        GetArraySize(arraySize);
-        var size = new TextDecoder("utf-8").decode(arraySize);
-        var sizeint = parseInt(size);
-
-        var msg = new Uint8Array(sizeint);
-        SetUint8ArrayInGo(msg);
-        if (msg.length > 0) {
-            if (id == 1){
-                sendData(msg);
-                sendData2(msg);
-                sendData3(msg);
-            } else if (id == 2) {
-                sendData(msg);
-            } else if (id == 3) {
-                sendData2(msg);
-            } else if (id == 4) {
-                sendData3(msg);
+        function readSendMsgs() {
+            var arraySize = new Uint8Array(10);
+            var moreMsg = new Uint8Array(1);
+            GetArraySize(arraySize, moreMsg);
+            var size = new TextDecoder("utf-8").decode(arraySize);
+            var sizeint = parseInt(size);
+            var msgs = new TextDecoder("utf-8").decode(moreMsg);
+            var msgsint = parseInt(msgs);
+    
+            var msg = new Uint8Array(sizeint);
+            SetUint8ArrayInGo(msg);
+            if (msg.length > 0) {
+                if (id == 1){
+                    sendData(msg);
+                    sendData2(msg);
+                    sendData3(msg);
+                } else if (id == 2) {
+                    sendData(msg);
+                } else if (id == 3) {
+                    sendData2(msg);
+                } else if (id == 4) {
+                    sendData3(msg);
+                }
+            };
+            if (msgsint > 0) {
+                readSendMsgs();
             }
         };
-    };
+    
 
     var intervalReadSendWASM;
 
