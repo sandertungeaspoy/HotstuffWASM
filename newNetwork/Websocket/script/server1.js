@@ -19,7 +19,9 @@ function dcInit() {
 }
 
 function createOffer() {
-    dcInit(dc = pc.createDataChannel("chat"));
+    dcInit(dc = pc.createDataChannel("chat", {
+        maxRetransmits: 16
+    }));
     pc.createOffer().then(d => pc.setLocalDescription(d));
     pc.addEventListener("icegatheringstatechange", ev => {
         switch(pc.iceGatheringState) {

@@ -181,7 +181,7 @@ func (cmdBuf *CmdBuffer) Accept(cmd hotstuff.Command) bool {
 		}
 
 	}
-	cmdBuf.Cmds = append(cmdBuf.Cmds, cmd)
+	// cmdBuf.Cmds = append(cmdBuf.Cmds, cmd)
 	cmdBuf.serialNumbers[id] = serial
 	return true
 }

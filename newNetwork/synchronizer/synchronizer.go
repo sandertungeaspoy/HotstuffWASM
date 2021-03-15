@@ -52,7 +52,7 @@ func (s *Synchronizer) OnFinishQC() {
 
 // OnNewView should be called when a replica receives a valid NewView message.
 func (s *Synchronizer) OnNewView() {
-	fmt.Println("Should beat")
+	// fmt.Println("Should beat")
 	s.beat()
 }
 
@@ -64,14 +64,16 @@ func (s *Synchronizer) Init(hs hotstuff.Consensus) {
 // Start starts the synchronizer.
 func (s *Synchronizer) Start() {
 	if s.GetLeader(s.hs.Leaf().GetView()+1) == s.hs.Config().ID() {
-		fmt.Println("Proposing")
+		// fmt.Println("Proposing")
 		s.Proposal <- s.hs.Propose()
-		fmt.Println("Proposed on channel")
-		s.timer = time.NewTimer(s.timeout)
-		var ctx context.Context
-		ctx, s.stop = context.WithCancel(context.Background())
-		go s.newViewTimeout(ctx)
+		// fmt.Println("Proposed on channel")
 	}
+	s.timer = time.NewTimer(s.timeout)
+	// var ctx context.Context
+	// ctx, s.stop = context.WithCancel(context.Background())
+	go func() {
+		s.newViewTimeout()
+	}()
 }
 
 // Stop stops the synchronizer.
@@ -87,6 +89,7 @@ func (s *Synchronizer) Stop() {
 
 func (s *Synchronizer) beat() {
 	if s.stopped {
+		fmt.Println("Stopped")
 		return
 	}
 	view := s.hs.Leaf().GetView()
@@ -95,13 +98,14 @@ func (s *Synchronizer) beat() {
 		s.mut.Unlock()
 		// logger.Debug("Can't beat more than once per view ", s.lastBeat)
 		fmt.Println("Can't beat more than once per view: ", s.lastBeat)
-		fmt.Println(view)
+		// fmt.Println(view)
 		return
 	}
 	if s.GetLeader(view+1) != s.hs.Config().ID() {
 		s.mut.Unlock()
 		return
 	}
+	fmt.Println("Propose again...")
 	s.lastBeat = view
 	s.mut.Unlock()
 	go func() {
@@ -109,20 +113,25 @@ func (s *Synchronizer) beat() {
 	}()
 }
 
-func (s *Synchronizer) newViewTimeout(ctx context.Context) {
+func (s *Synchronizer) newViewTimeout() {
 	for {
-		time.Sleep(time.Millisecond * 10)
+		// time.Sleep(time.Millisecond * 10)
 		select {
-		case <-ctx.Done():
-			return
+		// case <-ctx.Done():
+		// 	return
 		case <-s.timer.C:
 			fmt.Println("Timeout")
 			s.hs.CreateDummy()
 			if s.GetLeader(s.hs.Leaf().View) == s.hs.Config().ID() {
-				go func() {
-					s.NewView <- true
-				}()
+				// go func() {
+
+				// }()
+				msg := s.hs.NewView()
+				s.hs.OnNewView(msg)
+			} else {
+				s.NewView <- true
 			}
+			fmt.Println("Resetting timer...")
 			s.mut.Lock()
 			s.timer.Reset(s.timeout)
 			s.mut.Unlock()
