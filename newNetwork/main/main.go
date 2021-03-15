@@ -32,6 +32,7 @@ var recieved chan []byte
 var recvLock sync.Mutex
 var sendLock sync.Mutex
 var srv server.Server
+var incomingCmd chan string
 
 func main() {
 	registerCallbacks()
@@ -49,6 +50,7 @@ func main() {
 	sendBytes = make([][]byte, 0)
 	recvBytes = make([][]byte, 0)
 	recieved = make(chan []byte, 32)
+	incomingCmd = make(chan string, 16)
 	//Public keys
 	pubkeyString1 := "-----BEGIN HOTSTUFF PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEyaKwozY7C9LL4CAGyuY3gQvHrysu\nkW2YuGfGHvgumwRANtalltLIWEQ5OS2ewsR2xastcb/gzUBtyj54Mi1saw==\n-----END HOTSTUFF PUBLIC KEY-----"
 	pubBlock1, _ := pem.Decode([]byte(pubkeyString1))
@@ -281,6 +283,21 @@ func main() {
 					continue
 				}
 				recvLock.Lock()
+				cmd := strings.Split(string(recvBytes[0]), ":")
+				if cmd[0] == "Command" {
+					fmt.Println("Recieved command: " + cmd[1])
+					cmdString := cmd[1]
+					if len(recvBytes) > 1 {
+						recvBytes = recvBytes[1:]
+					} else {
+						recvBytes = make([][]byte, 0)
+					}
+					srv.Cmds.Cmds = append(srv.Cmds.Cmds, hotstuff.Command(cmdString))
+					recvLock.Unlock()
+					continue
+				}
+				recvLock.Unlock()
+				recvLock.Lock()
 				pc := StringToPartialCert(string(recvBytes[0]))
 				if len(recvBytes) > 1 {
 					recvBytes = recvBytes[1:]
@@ -339,6 +356,10 @@ func main() {
 				sendLock.Lock()
 				sendBytes = append(sendBytes, []byte(msg))
 				sendLock.Unlock()
+			case cmd := <-incomingCmd:
+				cmdString := "Command:" + cmd
+				fmt.Println("Sending command")
+				sendBytes = append(sendBytes, []byte(cmdString))
 			}
 		}
 	}
@@ -348,7 +369,7 @@ func main() {
 func FormatBytes(msg []byte) (id hotstuff.ID, cmd string, obj string) {
 	if len(msg) != 0 {
 		msgString := string(msg)
-		msgStringByte := strings.Split(msgString, " ")
+		msgStringByte := strings.Split(msgString, ";")
 		// fmt.Print("FormatBytes string: ")
 		// fmt.Println(msgString)
 		// fmt.Print("Byte of msg: ")
@@ -578,9 +599,14 @@ func GetArraySize(this js.Value, args []js.Value) interface{} {
 func GetCommand(this js.Value, i []js.Value) interface{} {
 	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
 
-	cmd, _ := strconv.ParseUint(value1, 10, 32)
-	command := hotstuff.Command(cmd)
-	srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
+	cmd := string(value1)
+	cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
+	if serverID == 1 {
+		command := hotstuff.Command(cmd)
+		srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
+	} else {
+		incomingCmd <- cmd
+	}
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 
 	hotstuff "github.com/HotstuffWASM/newNetwork"
@@ -188,20 +189,29 @@ func (hs *chainedhotstuff) Propose() []byte {
 	hs.mut.Lock()
 	fmt.Println("Generating proposal")
 	// fmt.Println(hs.commands)
-	// cmd := hs.commands.GetCommand()
+	cmd := hs.commands.GetCommand()
 	// TODO: Should probably use channels/contexts here instead such that
 	// a proposal can be made a little later if a new command is added to the queue.
 	// Alternatively, we could let the pacemaker know when commands arrive, so that it
 	// can rall Propose() again.
-	// if *cmd != hotstuff.Command("Test") {
-	// 	// hs.mut.Unlock()
-	// 	// return
-	// 	cmd = new(hotstuff.Command)
-	// }
-	cmd := new(hotstuff.Command)
+	cmdID := "0"
+	cmd2 := ""
+	if cmd == nil {
+		// hs.mut.Unlock()
+		// return
+		cmd = new(hotstuff.Command)
+		cmdID = strconv.FormatUint(uint64(hs.cfg.ID()), 10)
+		cmd2 = string(*cmd)
+	} else {
+		cmdIDString := strings.Split(string(*cmd), "cmdID")
+		cmdID = cmdIDString[0]
+		cmd2 = cmdIDString[1]
+		// cmd = hotstuff.Command(cmd2)
+	}
+	// cmd := new(hotstuff.Command)
 	// cmd := &command
 
-	cmdStringSerial := strconv.FormatUint(uint64(hs.cfg.ID()), 10) + "sNumber" + strconv.Itoa(hs.ctr) + "sNumber" + string(*cmd)
+	cmdStringSerial := cmdID + "sNumber" + strconv.Itoa(hs.ctr) + "sNumber" + cmd2
 	c := hotstuff.Command(cmdStringSerial)
 	hs.ctr++
 
@@ -218,7 +228,7 @@ func (hs *chainedhotstuff) Propose() []byte {
 	// fmt.Println(parentBlock.Hash())
 
 	var bytes []byte
-	cmdString := "ID: " + strconv.FormatUint(uint64(hs.cfg.ID()), 10) + " Propose " + block.ToString()
+	cmdString := "ID:;" + strconv.FormatUint(uint64(hs.cfg.ID()), 10) + ";Propose;" + block.ToString()
 	// cmdByte, _ := hex.DecodeString(cmdString)
 	// bytes = append(bytes, cmdByte...)
 	// fmt.Println(cmdString)
