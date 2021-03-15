@@ -31,6 +31,7 @@ var serverID hotstuff.ID = 0
 var recieved chan []byte
 var recvLock sync.Mutex
 var sendLock sync.Mutex
+var srv server.Server
 
 func main() {
 	registerCallbacks()
@@ -162,7 +163,7 @@ func main() {
 	pm := synchronizer.New(leaderRotation, time.Duration(50)*time.Second)
 	var cfg *server.Config
 
-	srv := server.Server{
+	srv = server.Server{
 		ID:        serverID,
 		Addr:      addr[int(serverID)],
 		Pm:        pm,
@@ -204,7 +205,7 @@ func main() {
 	if srv.ID == srv.Pm.GetLeader(hs.Leaf().GetView()+1) {
 		fmt.Println("I am Leader")
 		for {
-			time.Sleep(time.Millisecond * 10)
+			// time.Sleep(time.Millisecond * 10)
 			fmt.Println("Waiting for reply from replicas or for new proposal to be made...")
 			select {
 			case msgByte := <-srv.Pm.Proposal:
@@ -573,9 +574,19 @@ func GetArraySize(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+// GetCommand gets the ID of the server
+func GetCommand(this js.Value, i []js.Value) interface{} {
+	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
+
+	cmd, _ := strconv.ParseUint(value1, 10, 32)
+	command := hotstuff.Command(cmd)
+	srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
+	return nil
+}
+
 func registerCallbacks() {
 	js.Global().Set("GetSelfID", js.FuncOf(GetSelfID))
-
+	js.Global().Set("GetCommand", js.FuncOf(GetCommand))
 	js.Global().Set("PassUint8ArrayToGo", js.FuncOf(PassUint8ArrayToGo))
 	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
 	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))

@@ -187,17 +187,19 @@ func (hs *chainedhotstuff) update(block *hotstuff.Block) {
 func (hs *chainedhotstuff) Propose() []byte {
 	hs.mut.Lock()
 	fmt.Println("Generating proposal")
+	// fmt.Println(hs.commands)
 	// cmd := hs.commands.GetCommand()
 	// TODO: Should probably use channels/contexts here instead such that
 	// a proposal can be made a little later if a new command is added to the queue.
 	// Alternatively, we could let the pacemaker know when commands arrive, so that it
 	// can rall Propose() again.
-	// if cmd == nil {
+	// if *cmd != hotstuff.Command("Test") {
 	// 	// hs.mut.Unlock()
 	// 	// return
 	// 	cmd = new(hotstuff.Command)
 	// }
 	cmd := new(hotstuff.Command)
+	// cmd := &command
 
 	cmdStringSerial := strconv.FormatUint(uint64(hs.cfg.ID()), 10) + "sNumber" + strconv.Itoa(hs.ctr) + "sNumber" + string(*cmd)
 	c := hotstuff.Command(cmdStringSerial)
