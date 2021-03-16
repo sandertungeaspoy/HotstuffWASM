@@ -477,10 +477,6 @@ func StringToPartialCert(s string) hotstuff.PartialCert {
 // StringToNewView converts the string to a NewView message
 func StringToNewView(s string) hotstuff.NewView {
 	stringByte := strings.Split(s, ":")
-	fmt.Print("ViewString: ")
-	fmt.Println(s)
-	fmt.Print("ViewByte: ")
-	fmt.Println(stringByte)
 	viewID, _ := strconv.ParseUint(stringByte[1], 10, 32)
 
 	view, _ := strconv.ParseUint(stringByte[2], 10, 32)
