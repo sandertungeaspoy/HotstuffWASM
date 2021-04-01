@@ -191,6 +191,9 @@ func (s wasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// if _, ok := connections.connections[r.Host]; ok {
 	// 	return
 	// }
+	fmt.Println(r.RemoteAddr)
+	fmt.Println(r.RequestURI)
+
 	opts := &websocket.AcceptOptions{OriginPatterns: []string{"*"}, Subprotocols: []string{"*"}}
 	c, err := websocket.Accept(w, r, opts)
 	if err != nil {
