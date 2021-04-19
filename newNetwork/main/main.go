@@ -33,6 +33,7 @@ var recvLock sync.Mutex
 var sendLock sync.Mutex
 var srv server.Server
 var incomingCmd chan string
+var cmdLock sync.Mutex
 
 func main() {
 	registerCallbacks()
@@ -211,17 +212,11 @@ func main() {
 			fmt.Println("Waiting for reply from replicas or for new proposal to be made...")
 			select {
 			case msgByte := <-srv.Pm.Proposal:
-				// fmt.Println("Read channel msg...")
-				// fmt.Println(msgByte)
+				if msgByte == nil {
+					continue
+				}
 				senderID, cmd, obj := FormatBytes(msgByte)
 				blockString := msgByte
-				// fmt.Println("FormatBytes result: ")
-				// fmt.Print("SenderID: ")
-				// fmt.Println(senderID)
-				// fmt.Print("cmd: ")
-				// fmt.Println(cmd)
-				// fmt.Print("obj: ")
-				// fmt.Println(obj)
 				if senderID != srv.ID && cmd != "Propose" {
 					continue
 				}
@@ -235,6 +230,7 @@ func main() {
 				pcString, err := srv.Hs.OnPropose(block)
 				if err != nil {
 					fmt.Println(err)
+					continue
 				}
 				// fmt.Print("SenderID: ")
 				// fmt.Println(senderID)
@@ -269,7 +265,6 @@ func main() {
 					recvLock.Lock()
 					msg := StringToNewView(string(recvBytes[0]))
 					recvLock.Unlock()
-					// fmt.Println(msg)
 					srv.Hs.OnNewView(msg)
 					recvLock.Lock()
 					if len(recvBytes) > 1 {
@@ -293,6 +288,7 @@ func main() {
 						recvBytes = make([][]byte, 0)
 					}
 					srv.Cmds.Cmds = append(srv.Cmds.Cmds, hotstuff.Command(cmdString))
+					srv.Pm.Proposal <- srv.Hs.Propose()
 					recvLock.Unlock()
 					continue
 				}
@@ -305,14 +301,15 @@ func main() {
 					recvBytes = make([][]byte, 0)
 				}
 				recvLock.Unlock()
-				// fmt.Print("RecvBytes: ")
-				// fmt.Println(recvBytes)
 				srv.Hs.OnVote(pc)
-				// case ok := <-srv.Pm.NewView:
-				// 	fmt.Println("Timeout -> start new view")
-				// 	if ok {
-				// 		srv.Hs.NewView()
-				// 	}
+			case <-srv.Pm.NewView:
+				msg := srv.Hs.NewView()
+				srv.Hs.OnNewView(msg)
+				msgString := NewViewToString(msg)
+				fmt.Println("Sending timeout msg to replicas...")
+				sendLock.Lock()
+				sendBytes = append(sendBytes, []byte(msgString))
+				sendLock.Unlock()
 			}
 		}
 	} else {
@@ -323,6 +320,24 @@ func main() {
 			select {
 			case <-recieved:
 				fmt.Println("Recieved byte from leader...")
+				recvLock.Lock()
+				newView := strings.Split(string(recvBytes[0]), ":")
+				recvLock.Unlock()
+				if newView[0] == "NewView" {
+					fmt.Println("Recieved timeout from leader...")
+					recvLock.Lock()
+					msg := StringToNewView(string(recvBytes[0]))
+					recvLock.Unlock()
+					srv.Hs.OnNewView(msg)
+					recvLock.Lock()
+					if len(recvBytes) > 1 {
+						recvBytes = recvBytes[1:]
+					} else {
+						recvBytes = make([][]byte, 0)
+					}
+					recvLock.Unlock()
+					continue
+				}
 				recvLock.Lock()
 				id, cmd, obj := FormatBytes(recvBytes[0])
 				if len(recvBytes) > 1 {
@@ -345,12 +360,15 @@ func main() {
 					continue
 				}
 				srv.Hs.Finish(block)
+				pc := StringToPartialCert(pcString)
+				srv.Hs.OnVote(pc)
 				fmt.Println("Sending PC to leader...")
 				sendLock.Lock()
 				sendBytes = append(sendBytes, []byte(pcString))
 				sendLock.Unlock()
 			case <-srv.Pm.NewView:
 				timeoutview := srv.Hs.NewView()
+				srv.Hs.OnNewView(timeoutview)
 				msg := NewViewToString(timeoutview)
 				fmt.Println("Sending timeout msg to leader...")
 				sendLock.Lock()
@@ -358,8 +376,10 @@ func main() {
 				sendLock.Unlock()
 			case cmd := <-incomingCmd:
 				cmdString := "Command:" + cmd
-				fmt.Println("Sending command")
+				fmt.Println("Sending command to leader...")
+				sendLock.Lock()
 				sendBytes = append(sendBytes, []byte(cmdString))
+				sendLock.Unlock()
 			}
 		}
 	}
@@ -515,7 +535,7 @@ func StringToNewView(s string) hotstuff.NewView {
 
 // NewViewToString returns the NewView message as a string
 func NewViewToString(view hotstuff.NewView) string {
-	msg := "NewView:" + strconv.FormatUint(uint64(view.ID), 10) + ":" + strconv.FormatUint(uint64(view.View), 10) + ":" + view.QC.GetStringSignatures() + ":" + view.QC.BlockHash().String()
+	msg := "NewView:" + strconv.FormatUint(uint64(view.ID), 10) + ":" + strconv.FormatUint(uint64(view.View+1), 10) + ":" + view.QC.GetStringSignatures() + ":" + view.QC.BlockHash().String()
 	return msg
 }
 
@@ -531,7 +551,6 @@ func GetSelfID(this js.Value, i []js.Value) interface{} {
 
 // PassUint8ArrayToGo passes array
 func PassUint8ArrayToGo(this js.Value, args []js.Value) interface{} {
-	fmt.Println("recieved func()")
 	recv := make([]byte, args[0].Get("length").Int())
 
 	_ = js.CopyBytesToGo(recv, args[0])
@@ -599,8 +618,11 @@ func GetCommand(this js.Value, i []js.Value) interface{} {
 	cmd := string(value1)
 	cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
 	if serverID == 1 {
+		cmdLock.Lock()
 		command := hotstuff.Command(cmd)
 		srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
+		cmdLock.Unlock()
+		srv.Pm.Proposal <- srv.Hs.Propose()
 	} else {
 		incomingCmd <- cmd
 	}

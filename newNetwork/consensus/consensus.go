@@ -98,6 +98,7 @@ func (hs *chainedhotstuff) BlockChain() hotstuff.BlockChain {
 }
 
 func (hs *chainedhotstuff) CreateDummy() {
+	fmt.Println("Creating dummy...")
 	hs.mut.Lock()
 	dummy := hotstuff.NewBlock(hs.bLeaf.Hash(), nil, hotstuff.Command(""), hs.bLeaf.GetView()+1, hs.cfg.ID())
 	hs.blocks.Store(dummy)
@@ -194,6 +195,10 @@ func (hs *chainedhotstuff) Propose() []byte {
 	// a proposal can be made a little later if a new command is added to the queue.
 	// Alternatively, we could let the pacemaker know when commands arrive, so that it
 	// can rall Propose() again.
+	// if cmd == nil {
+	// 	hs.mut.Unlock()
+	// 	return nil
+	// }
 	cmdID := "0"
 	cmd2 := ""
 	if cmd == nil {
@@ -478,17 +483,19 @@ func (hs *chainedhotstuff) OnNewView(msg hotstuff.NewView) {
 
 	hs.updateHighQC(msg.QC)
 
-	v, ok := hs.newView[msg.View]
-	if !ok {
-		v = make(map[hotstuff.ID]struct{})
-	}
-	v[msg.ID] = struct{}{}
-	hs.newView[msg.View] = v
+	if hs.synchronizer.GetLeader(hs.bLeaf.GetView()+1) == hs.cfg.ID() {
+		v, ok := hs.newView[msg.View]
+		if !ok {
+			v = make(map[hotstuff.ID]struct{})
+		}
+		v[msg.ID] = struct{}{}
+		hs.newView[msg.View] = v
 
-	if len(hs.newView[msg.View]) < hs.cfg.QuorumSize() {
-		hs.mut.Unlock()
-		fmt.Println("Not quorum for newView")
-		return
+		if len(hs.newView[msg.View]) < hs.cfg.QuorumSize() {
+			hs.mut.Unlock()
+			fmt.Println("Not quorum for newView")
+			return
+		}
 	}
 
 	hs.mut.Unlock()
