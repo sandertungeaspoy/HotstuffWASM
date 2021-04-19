@@ -19,7 +19,6 @@
 
       		async function run() {
                 document.getElementById("runButton").disabled = true;
-                assignHandler();
         		await go.run(inst);
         		inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
                 
@@ -28,11 +27,11 @@
             
             
 		</script>
-        <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+        <!-- <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
         <script src="script/server1.js"></script>
         <script src="script/server2.js"></script>
-        <script src="script/server3.js"></script>
-        <script>
+        <script src="script/server3.js"></script> -->
+        <!-- <script>
             var id;
             function startSRV(){
                 startWebRTC();
@@ -46,7 +45,7 @@
                 document.getElementById("id3").disabled = true;
                 document.getElementById("id4").disabled = true;
             }
-        </script>
+        </script> -->
         
 	</head>
 	<body>
@@ -54,12 +53,12 @@
 		<h1>HotStuff WASM Server</h1>
 			Self-ID:<input type="text" id="self-id" name="Server ID" value="1" disabled=true readonly>
 			
-			<button onClick="GetSelfID('self-id'); this.disabled = true;" disabled=true id="idButton">Assign</button>
+			<button onClick="GetSelfID('self-id'); this.disabled = true;" id="idButton">Assign</button>
 
-            <button onClick="document.getElementById('self-id').value = 1; startSRV();" id="id1">Start Srv 1</button>
-            <button onClick="document.getElementById('self-id').value = 2; startSRV();" id="id2">Start Srv 2</button>
-            <button onClick="document.getElementById('self-id').value = 3; startSRV();" id="id3">Start Srv 3</button>
-            <button onClick="document.getElementById('self-id').value = 4; startSRV();" id="id4">Start Srv 4</button>
+            <button onClick="document.getElementById('self-id').value = 1;" id="id1">Start Srv 1</button>
+            <button onClick="document.getElementById('self-id').value = 2;" id="id2">Start Srv 2</button>
+            <button onClick="document.getElementById('self-id').value = 3;" id="id3">Start Srv 3</button>
+            <button onClick="document.getElementById('self-id').value = 4;" id="id4">Start Srv 4</button>
 
 			<!-- Chat:<input type="text" id="text" name="charbox" value="Test"> -->
             <p id="textbox">This is a test</p>

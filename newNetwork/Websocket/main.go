@@ -37,6 +37,7 @@ type connMap struct {
 	connections map[string]net.Conn
 	answer      map[string]string
 	offer       map[string]string
+	completed   map[string]bool
 }
 
 var connections connMap
@@ -45,6 +46,7 @@ func main() {
 	connections.connections = make(map[string]net.Conn)
 	connections.answer = make(map[string]string)
 	connections.offer = make(map[string]string)
+	connections.completed = make(map[string]bool)
 
 	flag.Parse()
 	log.Printf("listening on %q...", *listen)
@@ -191,6 +193,7 @@ func (s wasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// if _, ok := connections.connections[r.Host]; ok {
 	// 	return
 	// }
+	fmt.Println(r.RemoteAddr)
 	opts := &websocket.AcceptOptions{OriginPatterns: []string{"*"}, Subprotocols: []string{"*"}}
 	c, err := websocket.Accept(w, r, opts)
 	if err != nil {
@@ -198,6 +201,8 @@ func (s wasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+	defer cancel()
 	conn := websocket.NetConn(ctx, c, 1)
 	if strings.Split(r.Host, ":")[1] == "13371" {
 		connections.connections = make(map[string]net.Conn)
@@ -208,82 +213,69 @@ func (s wasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		cancel()
 		return
 	}
-	for {
-		msg, err := bufio.NewReader(conn).ReadString('&')
-		fmt.Println(msg)
-		fmt.Println("Request \"Addr\": ")
-		fmt.Println(r.Host)
-		msg = strings.Split(msg, "&")[0]
-		msgType := strings.Split(strings.Split(msg, "setup:")[1], "\n")[0]
-		msgType = strings.TrimSpace(msgType)
-		fmt.Println(msgType)
+	msg, err := bufio.NewReader(conn).ReadString('%')
+	fmt.Println(msg)
+	fmt.Println("Request \"Addr\": ")
+	fmt.Println(r.Host)
+	msgs := strings.Split(msg, "&")
+	senderID := strings.Split(msgs[1], "%")
+	msgType := strings.Split(strings.Split(msgs[0], "setup:")[1], "\n")[0]
+	msgType = strings.TrimSpace(msgType)
+	fmt.Println(msgType)
 
-		// connections.connections[r.Host] = conn
+	// connections.connections[r.Host] = conn
 
-		if msgType == "actpass" {
-			connections.offer[r.Host] = msg
-		} else if msgType == "active" {
-			connections.answer[r.Host] = msg
-			break
-		} else if msgType == "recvOffer" {
-			for {
-				time.Sleep(time.Millisecond * 2000)
-				fmt.Println("inn loop")
-				// fmt.Println(connections.offer)
-				connections.mux.Lock()
-				if _, ok := connections.offer[r.Host]; ok {
-					fmt.Println("ok")
-					// _, err = bufio.NewWriter(conn).WriteString(connections.offer["localhost:13371"])
-					conn.Write([]byte(connections.offer[r.Host]))
-					if err != nil {
-						fmt.Println(err)
-					}
-					// conn.Write([]byte(connections.offer["localhost:13371"]))
-					connections.mux.Unlock()
-					fmt.Println("breaking")
-					break
-				}
+	if msgType == "actpass" {
+		connections.mux.Lock()
+		connections.offer[senderID[0]] = msgs[0]
+		connections.completed[senderID[0]] = false
+		connections.mux.Unlock()
+	} else if msgType == "active" {
+		connections.mux.Lock()
+		connections.answer[senderID[0]] = msgs[0]
+		connections.completed[senderID[0]] = true
+		connections.mux.Unlock()
+	} else if msgType == "recvOffer" {
+		connections.mux.Lock()
+		fmt.Println(connections.offer)
+		for key, value := range connections.completed {
+			if !value {
+				conn.Write([]byte(connections.offer[key] + "&" + key + "%"))
 				connections.mux.Unlock()
+				return
 			}
-		} else if msgType == "recvAnswer" {
-			for {
-				time.Sleep(time.Millisecond * 500)
-				fmt.Println("inn loop")
-				// fmt.Println(connections.offer)
-				connections.mux.Lock()
-				if _, ok := connections.answer[r.Host]; ok {
-					fmt.Println("ok")
-					// _, err = bufio.NewWriter(conn).WriteString(connections.offer["localhost:13371"])
-					conn.Write([]byte(connections.answer[r.Host]))
-					if err != nil {
-						fmt.Println(err)
-					}
-					// conn.Write([]byte(connections.offer["localhost:13371"]))
-					connections.mux.Unlock()
-					fmt.Println("breaking")
-
-					break
-				}
-				connections.mux.Unlock()
-			}
-			break
 		}
+		connections.mux.Unlock()
+	} else if msgType == "recvAnswer" {
+		connections.mux.Lock()
+		fmt.Println(connections.answer)
+		if connections.completed[senderID[0]] {
+			conn.Write([]byte(connections.answer[senderID[0]] + "&" + senderID[0] + "%"))
+			connections.mux.Unlock()
+			return
+		}
+		connections.mux.Unlock()
+	} else if msgType == "removeOffer" {
+		connections.mux.Lock()
+		_, ok := connections.offer[senderID[0]]
+		if ok {
+			delete(connections.offer, senderID[0])
+			delete(connections.completed, senderID[0])
+			connections.mux.Unlock()
+			return
+		}
+		connections.mux.Unlock()
+	} else if msgType == "removeAnswer" {
+		connections.mux.Lock()
+		_, ok := connections.answer[senderID[0]]
+		if ok {
+			delete(connections.answer, senderID[0])
+			delete(connections.completed, senderID[0])
+			connections.mux.Unlock()
+			return
+		}
+		connections.mux.Unlock()
 	}
 
-	// for {
-	// 	time.Sleep(time.Second * 1)
-	// 	buff := make([]byte, 4096)
-	// 	n, err := conn.Read(buff)
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 		break
-	// 	}
-	// 	res := make([]byte, n)
-	// 	copy(res, buff[:n])
-	// 	fmt.Println(res)
-	// }
-
-	defer c.Close(websocket.StatusInternalError, "the sky is falling")
-	defer cancel()
 	fmt.Println("Accepted")
 }

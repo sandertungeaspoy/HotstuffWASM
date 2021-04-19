@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"context"
 	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -23,6 +25,9 @@ import (
 	"github.com/HotstuffWASM/newNetwork/leaderrotation"
 	server "github.com/HotstuffWASM/newNetwork/server"
 	synchronizer "github.com/HotstuffWASM/newNetwork/synchronizer"
+	"nhooyr.io/websocket"
+
+	"github.com/pion/webrtc/v3"
 )
 
 var sendBytes [][]byte
@@ -35,8 +40,12 @@ var srv server.Server
 var incomingCmd chan string
 var cmdLock sync.Mutex
 
+var peerMap map[hotstuff.ID]*webrtc.DataChannel
+
 func main() {
 	registerCallbacks()
+
+	peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
 
 	serverID = hotstuff.ID(0)
 	for {
@@ -205,6 +214,8 @@ func main() {
 
 	srv.Pm.Start()
 
+	go EstablishConnections()
+
 	if srv.ID == srv.Pm.GetLeader(hs.Leaf().GetView()+1) {
 		fmt.Println("I am Leader")
 		for {
@@ -247,7 +258,8 @@ func main() {
 				fmt.Println("Sending byte...")
 				// fmt.Println(runtime.NumGoroutine())
 				sendLock.Lock()
-				sendBytes = append(sendBytes, blockString)
+				// sendBytes = append(sendBytes, blockString)
+				SendCommand(blockString)
 				sendLock.Unlock()
 				// fmt.Println(sendBytes)
 				fmt.Println("Bytes sent...")
@@ -364,7 +376,8 @@ func main() {
 				srv.Hs.OnVote(pc)
 				fmt.Println("Sending PC to leader...")
 				sendLock.Lock()
-				sendBytes = append(sendBytes, []byte(pcString))
+				// sendBytes = append(sendBytes, []byte(pcString))
+				SendCommand([]byte(pcString))
 				sendLock.Unlock()
 			case <-srv.Pm.NewView:
 				timeoutview := srv.Hs.NewView()
@@ -372,14 +385,15 @@ func main() {
 				msg := NewViewToString(timeoutview)
 				fmt.Println("Sending timeout msg to leader...")
 				sendLock.Lock()
-				sendBytes = append(sendBytes, []byte(msg))
+				// sendBytes = append(sendBytes, []byte(msg))
+				SendCommand([]byte(msg))
 				sendLock.Unlock()
 			case cmd := <-incomingCmd:
 				cmdString := "Command:" + cmd
+
 				fmt.Println("Sending command to leader...")
-				sendLock.Lock()
-				sendBytes = append(sendBytes, []byte(cmdString))
-				sendLock.Unlock()
+				// sendBytes = append(sendBytes, []byte(cmdString))
+				SendCommand([]byte(cmdString))
 			}
 		}
 	}
@@ -537,6 +551,446 @@ func StringToNewView(s string) hotstuff.NewView {
 func NewViewToString(view hotstuff.NewView) string {
 	msg := "NewView:" + strconv.FormatUint(uint64(view.ID), 10) + ":" + strconv.FormatUint(uint64(view.View+1), 10) + ":" + view.QC.GetStringSignatures() + ":" + view.QC.BlockHash().String()
 	return msg
+}
+
+func ConnectToPeer() (*webrtc.DataChannel, string) {
+create:
+	// Prepare the configuration
+	config := webrtc.Configuration{
+		ICEServers: []webrtc.ICEServer{
+			{
+				URLs: []string{"stun:stun.l.google.com:19302"},
+			},
+		},
+	}
+
+	// Create a new RTCPeerConnection
+	peerConnection, err := webrtc.NewPeerConnection(config)
+	if err != nil {
+		panic(err)
+	}
+
+	// Set the handler for ICE connection state
+	// This will notify you when the peer has connected/disconnected
+	peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+		fmt.Printf("ICE Connection State has changed: %s\n", connectionState.String())
+	})
+
+	// Register data channel creation handling
+
+	var dc *webrtc.DataChannel
+
+	waiter := make(chan struct{})
+
+	peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
+		fmt.Printf("New DataChannel %s %d\n", d.Label(), d.ID())
+
+		// Register channel opening handling
+		d.OnOpen(func() {
+			fmt.Printf("Data channel '%s'-'%d' open. Random messages will now be sent to any connected DataChannels every 5 seconds\n", d.Label(), d.ID())
+			// Register text message handling
+			d.OnMessage(func(msg webrtc.DataChannelMessage) {
+				// fmt.Printf("Message from DataChannel '%s': '%s'\n", d.Label(), string(msg.Data))
+				// err := d.SendText("Message Received")
+				recvLock.Lock()
+				recvBytes = append(recvBytes, msg.Data)
+				recvLock.Unlock()
+				recieved <- msg.Data
+				// if err != nil {
+				// 	fmt.Println(err)
+				// }
+			})
+			dc = d
+			// fmt.Println(dc)
+			close(waiter)
+
+			d.OnClose(func() {
+				fmt.Printf("Data channel '%s'-'%d' has been closed\n", d.Label(), d.ID())
+
+				peerKey, ok := mapkeyDataChannel(peerMap, d)
+
+				if ok {
+					delete(peerMap, peerKey)
+					id := strconv.FormatUint(uint64(peerKey), 10)
+					removeAnswer(id)
+				}
+
+			})
+
+		})
+
+	})
+
+	offer := "empty"
+	senderID := ""
+	for {
+		offer, senderID = ReceiveOffer()
+		if offer != "empty" {
+			break
+		}
+		time.Sleep(time.Millisecond * 500)
+	}
+
+	offersdp := webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: offer}
+
+	err = peerConnection.SetRemoteDescription(offersdp)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create answer
+	answer, err := peerConnection.CreateAnswer(nil)
+	if err != nil {
+		panic(err)
+	}
+
+	// Sets the LocalDescription, and starts our UDP listeners
+	err = peerConnection.SetLocalDescription(answer)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create channel that is blocked until ICE Gathering is complete
+	gatherComplete := webrtc.GatheringCompletePromise(peerConnection)
+
+	for {
+		fmt.Println(peerConnection.ICEGatheringState())
+		if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete && strings.Contains(peerConnection.LocalDescription().SDP, "c=IN IP4 0.0.0.0") {
+			fmt.Println(peerConnection.LocalDescription().SDP)
+			DeliverAnswer(peerConnection.LocalDescription().SDP, senderID)
+			break
+		} else if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete && !strings.Contains(peerConnection.LocalDescription().SDP, "c=IN IP4 0.0.0.0") {
+			goto create
+		}
+		time.Sleep(time.Second)
+
+	}
+
+	<-gatherComplete
+
+	<-waiter
+
+	return dc, senderID
+}
+
+func ConnectToLeader() (*webrtc.DataChannel, string) {
+
+	// Prepare the configuration
+	config := webrtc.Configuration{
+		ICEServers: []webrtc.ICEServer{
+			{
+				URLs: []string{"stun:stun.l.google.com:19302"},
+			},
+		},
+	}
+
+	// Create a new RTCPeerConnection
+	peerConnection, err := webrtc.NewPeerConnection(config)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create a datachannel with label 'data'
+	dataChannel, err := peerConnection.CreateDataChannel("data", nil)
+	if err != nil {
+		panic(err)
+	}
+
+	// Set the handler for ICE connection state
+	// This will notify you when the peer has connected/disconnected
+	peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+		fmt.Printf("ICE Connection State has changed: %s\n", connectionState.String())
+	})
+
+	waiter := make(chan struct{})
+
+	// Register channel opening handling
+	dataChannel.OnOpen(func() {
+		fmt.Printf("Data channel '%s'-'%d' open. Random messages will now be sent to any connected DataChannels every 5 seconds\n", dataChannel.Label(), dataChannel.ID())
+		close(waiter)
+		// for range time.NewTicker(5 * time.Second).C {
+		// 	message := "signal.RandSeq(15)"
+		// 	fmt.Printf("Sending '%s'\n", message)
+
+		// 	// Send the message as text
+		// 	sendErr := dataChannel.SendText(message)
+		// 	if sendErr != nil {
+		// 		panic(sendErr)
+		// 	}
+		// }
+	})
+
+	dataChannel.OnClose(func() {
+		fmt.Printf("Data channel '%s'-'%d' has been closed\n", dataChannel.Label(), dataChannel.ID())
+
+		peerKey, ok := mapkeyDataChannel(peerMap, dataChannel)
+
+		if ok {
+			delete(peerMap, peerKey)
+			RemoveOffer()
+		}
+
+	})
+
+	// Register text message handling
+	dataChannel.OnMessage(func(msg webrtc.DataChannelMessage) {
+		// fmt.Printf("Message from DataChannel '%s': '%s'\n", dataChannel.Label(), string(msg.Data))
+		recvLock.Lock()
+		recvBytes = append(recvBytes, msg.Data)
+		recvLock.Unlock()
+		recieved <- msg.Data
+	})
+
+	// Create an offer to send to the browser
+	offer, err := peerConnection.CreateOffer(nil)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create channel that is blocked until ICE Gathering is complete
+	gatherComplete := webrtc.GatheringCompletePromise(peerConnection)
+
+	err = peerConnection.SetLocalDescription(offer)
+	if err != nil {
+		panic(err)
+	}
+
+	for {
+		fmt.Println(peerConnection.ICEGatheringState())
+		if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete {
+			fmt.Println(peerConnection.LocalDescription().SDP)
+			DeliverOffer(peerConnection.LocalDescription().SDP)
+			break
+		}
+		time.Sleep(time.Second)
+
+	}
+
+	<-gatherComplete
+
+	answer := "empty"
+	senderID := ""
+	for {
+		answer, senderID = ReceiveAnswer()
+		if answer != "empty" {
+			break
+		}
+		time.Sleep(time.Millisecond * 500)
+	}
+
+	fmt.Println(answer)
+
+	answersdp := webrtc.SessionDescription{Type: webrtc.SDPTypeAnswer, SDP: answer}
+
+	// Apply the answer as the remote description
+	err = peerConnection.SetRemoteDescription(answersdp)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Remote desc set")
+
+	<-waiter
+
+	return dataChannel, senderID
+}
+
+func DeliverOffer(offer string) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
+	if err != nil {
+		// ...
+	}
+	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+
+	conn := websocket.NetConn(ctx, c, 1)
+
+	id := strconv.FormatUint(uint64(serverID), 10)
+
+	fmt.Fprintf(conn, offer+"&"+id+"%")
+
+	c.Close(websocket.StatusNormalClosure, "")
+}
+
+func DeliverAnswer(answer string, senderID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
+	if err != nil {
+		// ...
+	}
+	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+
+	conn := websocket.NetConn(ctx, c, 1)
+
+	// id := strconv.FormatUint(uint64(serverID), 10)
+
+	fmt.Fprintf(conn, answer+"&"+senderID+"%")
+
+	c.Close(websocket.StatusNormalClosure, "")
+}
+
+func ReceiveOffer() (string, string) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
+	if err != nil {
+		// ...
+	}
+	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+
+	conn := websocket.NetConn(ctx, c, 1)
+
+	id := strconv.FormatUint(uint64(serverID), 10)
+
+	fmt.Fprintf(conn, "setup:recvOffer\n&"+id+"%")
+
+	offer, err := bufio.NewReader(conn).ReadString('%')
+	if err != nil {
+		return "empty", "message"
+	}
+	fmt.Println(offer)
+
+	msgs := strings.Split(offer, "&")
+
+	c.Close(websocket.StatusNormalClosure, "")
+	return msgs[0], strings.Split(msgs[1], "%")[0]
+}
+
+func ReceiveAnswer() (string, string) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
+	if err != nil {
+		// ...
+	}
+	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+
+	conn := websocket.NetConn(ctx, c, 1)
+
+	id := strconv.FormatUint(uint64(serverID), 10)
+
+	fmt.Fprintf(conn, "setup:recvAnswer\n&"+id+"%")
+
+	answer, err := bufio.NewReader(conn).ReadString('%')
+	if err != nil {
+		return "empty", "message"
+	}
+
+	fmt.Println(answer)
+
+	msgs := strings.Split(answer, "&")
+
+	c.Close(websocket.StatusNormalClosure, "")
+	return msgs[0], strings.Split(msgs[1], "%")[0]
+}
+
+func RemoveOffer() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
+	if err != nil {
+		// ...
+	}
+	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+
+	conn := websocket.NetConn(ctx, c, 1)
+
+	id := strconv.FormatUint(uint64(serverID), 10)
+
+	fmt.Fprintf(conn, "setup:removeOffer\n&"+id+"%")
+
+	c.Close(websocket.StatusNormalClosure, "")
+}
+
+func removeAnswer(senderID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
+	if err != nil {
+		// ...
+	}
+	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+
+	conn := websocket.NetConn(ctx, c, 1)
+
+	fmt.Fprintf(conn, "setup:removeAnswer\n&"+senderID+"%")
+
+	c.Close(websocket.StatusNormalClosure, "")
+}
+
+func purgeWebRTCDatabase() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	c, _, err := websocket.Dial(ctx, "ws://localhost:13371", nil)
+	if err != nil {
+		// ...
+	}
+	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+
+	conn := websocket.NetConn(ctx, c, 1)
+
+	fmt.Fprintf(conn, "")
+
+	c.Close(websocket.StatusNormalClosure, "")
+}
+
+func EstablishConnections() {
+
+	for {
+		if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()+1) {
+
+			dc, peerID := ConnectToPeer()
+
+			peerIDUint, _ := strconv.ParseUint(peerID, 10, 32)
+			peerIDHot := hotstuff.ID(peerIDUint)
+
+			peerMap[peerIDHot] = dc
+
+		} else {
+
+			if len(peerMap) == 0 {
+				dc, leaderID := ConnectToLeader()
+
+				leaderIDUint, _ := strconv.ParseUint(leaderID, 10, 32)
+				leaderIDHot := hotstuff.ID(leaderIDUint)
+
+				peerMap[leaderIDHot] = dc
+			}
+			time.Sleep(time.Second * 5)
+		}
+	}
+
+}
+
+// mapkeyDataChannel finds the key for a specific datachannel in the peermap
+func mapkeyDataChannel(m map[hotstuff.ID]*webrtc.DataChannel, value *webrtc.DataChannel) (key hotstuff.ID, ok bool) {
+	for k, v := range m {
+		if v.ID() == value.ID() {
+			key = k
+			ok = true
+			return
+		}
+	}
+	return
+}
+
+func SendCommand(cmd []byte) error {
+	for _, peer := range peerMap {
+		err := peer.Send(cmd)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // GetSelfID gets the ID of the server

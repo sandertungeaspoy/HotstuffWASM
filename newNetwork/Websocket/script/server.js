@@ -18,43 +18,6 @@ function dcInit() {
     dc.onmessage = e => console.log(e.data);
 }
 
-function createOffer() {
-    dcInit(dc = pc.createDataChannel("chat", {
-        maxRetransmits: 16
-    }));
-    pc.createOffer().then(d => pc.setLocalDescription(d));
-    pc.addEventListener("icegatheringstatechange", ev => {
-        switch(pc.iceGatheringState) {
-          case "new":
-            /* gathering is either just starting or has been reset */
-            break;
-          case "gathering":
-            /* gathering has begun or is ongoing */
-            break;
-          case "complete":
-            /* gathering has ended */
-            offer = pc.localDescription.sdp;
-            // console.log(offer);
-            offer += "&"
-            ws.send(offer);
-            // console.log(offer);
-            ws.send("setup:recvAnswer\n&");
-            break;
-        }
-      });
-    // pc.onicecandidate = e => {
-        // console.log(e);
-    //     if (e.candidate) return;
-    //     offer = pc.localDescription.sdp;
-        // console.log(offer);
-    //     offer += "&"
-    //     ws.send(offer);
-        // console.log(offer);
-    //     ws.send("setup:recvAnswer\n&");
-    // };
-    return true;
-};
-
 
 function createAnswer() {
     if (pc.signalingState != "stable") return;
@@ -85,31 +48,9 @@ function createAnswer() {
             };
         }
         });
-    // pc.onicecandidate = e => {
-        // console.log(e);
-    //     if (e.candidate == "") {
-            // console.log(answer);
-    //         if (pc.localDescription.sdp.includes("c=IN IP4 0.0.0.0")) {
-    //             answer = pc.localDescription.sdp;
-    //             answer += "&"; 
-    //             ws.send(answer);
-    //             return;
-    //         } else {
-                // console.log("Retry");
-    //             createAnswer();
-    //         }
-    //     }
-    // };
+
 };
 
-
-function startChannel() {
-    // console.log("Trying to start channel")
-    if (pc.signalingState != "have-local-offer") return;
-    var desc = new RTCSessionDescription({ type:"answer", sdp:answer });
-    pc.setRemoteDescription(desc);
-    ws.close();
-};
 
 function sendData(data) {
     dc.send(data)
