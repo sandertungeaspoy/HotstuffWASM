@@ -151,6 +151,9 @@ func (srv *Server) Deliver(_ context.Context, block *hotstuff.Block) {
 func (srv *Server) Exec(cmd hotstuff.Command) {
 	fmt.Print("Command executed: ")
 	fmt.Println(cmd)
+	// if cmd == srv.Cmds.Cmds[0] {
+	// 	srv.Cmds.Cmds = srv.Cmds.Cmds[1:]
+	// }
 }
 
 // CmdBuffer is a buffer for the commands
@@ -189,8 +192,10 @@ func (cmdBuf *CmdBuffer) Accept(cmd hotstuff.Command) bool {
 // GetCommand returns the front command from the commandbuffer
 func (cmdBuf *CmdBuffer) GetCommand() *hotstuff.Command {
 	if len(cmdBuf.Cmds) != 0 {
+		cmdBuf.mut.Lock()
 		cmd := cmdBuf.Cmds[0]
 		cmdBuf.Cmds = cmdBuf.Cmds[1:]
+		cmdBuf.mut.Unlock()
 		return &cmd
 	}
 	return nil
