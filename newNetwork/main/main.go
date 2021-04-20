@@ -219,6 +219,7 @@ func main() {
 	if srv.ID == srv.Pm.GetLeader(hs.Leaf().GetView()+1) {
 		fmt.Println("I am Leader")
 		for {
+
 			// time.Sleep(time.Millisecond * 10)
 			fmt.Println("Waiting for reply from replicas or for new proposal to be made...")
 			select {
@@ -549,7 +550,7 @@ func StringToNewView(s string) hotstuff.NewView {
 
 // NewViewToString returns the NewView message as a string
 func NewViewToString(view hotstuff.NewView) string {
-	msg := "NewView:" + strconv.FormatUint(uint64(view.ID), 10) + ":" + strconv.FormatUint(uint64(view.View+1), 10) + ":" + view.QC.GetStringSignatures() + ":" + view.QC.BlockHash().String()
+	msg := "NewView:" + strconv.FormatUint(uint64(view.ID), 10) + ":" + strconv.FormatUint(uint64(view.View), 10) + ":" + view.QC.GetStringSignatures() + ":" + view.QC.BlockHash().String()
 	return msg
 }
 

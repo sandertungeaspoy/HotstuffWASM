@@ -164,7 +164,7 @@ func (cfg *Config) Len() int {
 
 // QuorumSize returns the size of a quorum
 func (cfg *Config) QuorumSize() int {
-	return len(cfg.replicaCfg.Replicas) - (len(cfg.replicaCfg.Replicas)-1)/3
+	return len(cfg.replicaCfg.Replicas) - 1 - (len(cfg.replicaCfg.Replicas)-2)/3
 }
 
 // Propose sends the block to all replicas in the configuration
