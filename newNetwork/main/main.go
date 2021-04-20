@@ -670,6 +670,8 @@ create:
 
 	<-waiter
 
+	removeAnswer(senderID)
+
 	return dc, senderID
 }
 
@@ -791,7 +793,7 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 	fmt.Println("Remote desc set")
 
 	<-waiter
-
+	RemoveOffer()
 	return dataChannel, senderID
 }
 
@@ -1071,7 +1073,7 @@ func GetCommand(this js.Value, i []js.Value) interface{} {
 
 	cmd := string(value1)
 	cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
-	if serverID == 1 {
+	if serverID == srv.Pm.GetLeader(srv.Hs.Leaf().View+1) {
 		cmdLock.Lock()
 		command := hotstuff.Command(cmd)
 		srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)

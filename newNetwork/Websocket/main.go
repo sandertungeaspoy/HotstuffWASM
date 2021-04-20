@@ -251,6 +251,7 @@ func (s wasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(connections.answer)
 		if connections.completed[senderID[0]] {
 			conn.Write([]byte(connections.answer[senderID[0]] + "&" + senderID[0] + "%"))
+			delete(connections.answer, senderID[0])
 			connections.mux.Unlock()
 			return
 		}
