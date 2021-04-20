@@ -625,6 +625,9 @@ create:
 	senderID := ""
 	for {
 		offer, senderID = ReceiveOffer()
+		if offer == "error" {
+			return nil, "error"
+		}
 		if offer != "empty" {
 			break
 		}
@@ -774,6 +777,9 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 	senderID := ""
 	for {
 		answer, senderID = ReceiveAnswer()
+		if answer == "error" {
+			return nil, "error"
+		}
 		if answer != "empty" {
 			break
 		}
@@ -803,7 +809,7 @@ func DeliverOffer(offer string) {
 
 	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
 	if err != nil {
-		// ...
+		return
 	}
 	defer c.Close(websocket.StatusInternalError, "the sky is falling")
 
@@ -822,7 +828,7 @@ func DeliverAnswer(answer string, senderID string) {
 
 	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
 	if err != nil {
-		// ...
+		return
 	}
 	defer c.Close(websocket.StatusInternalError, "the sky is falling")
 
@@ -841,7 +847,7 @@ func ReceiveOffer() (string, string) {
 
 	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
 	if err != nil {
-		// ...
+		return "error", "Websocket"
 	}
 	defer c.Close(websocket.StatusInternalError, "the sky is falling")
 
@@ -869,7 +875,7 @@ func ReceiveAnswer() (string, string) {
 
 	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
 	if err != nil {
-		// ...
+		return "error", "Websocket"
 	}
 	defer c.Close(websocket.StatusInternalError, "the sky is falling")
 
@@ -898,7 +904,7 @@ func RemoveOffer() {
 
 	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
 	if err != nil {
-		// ...
+		return
 	}
 	defer c.Close(websocket.StatusInternalError, "the sky is falling")
 
@@ -917,7 +923,7 @@ func removeAnswer(senderID string) {
 
 	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
 	if err != nil {
-		// ...
+		return
 	}
 	defer c.Close(websocket.StatusInternalError, "the sky is falling")
 
@@ -934,7 +940,7 @@ func purgeWebRTCDatabase() {
 
 	c, _, err := websocket.Dial(ctx, "ws://localhost:13371", nil)
 	if err != nil {
-		// ...
+		return
 	}
 	defer c.Close(websocket.StatusInternalError, "the sky is falling")
 
@@ -951,6 +957,10 @@ func EstablishConnections() {
 		if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()+1) {
 
 			dc, peerID := ConnectToPeer()
+			if peerID == "error" {
+				time.Sleep(time.Second * 30)
+				continue
+			}
 
 			peerIDUint, _ := strconv.ParseUint(peerID, 10, 32)
 			peerIDHot := hotstuff.ID(peerIDUint)
@@ -961,6 +971,10 @@ func EstablishConnections() {
 
 			if len(peerMap) == 0 {
 				dc, leaderID := ConnectToLeader()
+				if leaderID == "error" {
+					time.Sleep(time.Second * 30)
+					continue
+				}
 
 				leaderIDUint, _ := strconv.ParseUint(leaderID, 10, 32)
 				leaderIDHot := hotstuff.ID(leaderIDUint)
