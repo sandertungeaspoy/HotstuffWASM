@@ -797,7 +797,7 @@ func DeliverOffer(offer string) {
 	if err != nil {
 		return
 	}
-	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+	defer c.Close(websocket.StatusInternalError, "WebSocket has been closed")
 
 	conn := websocket.NetConn(ctx, c, 1)
 
@@ -816,7 +816,7 @@ func DeliverAnswer(answer string, senderID string) {
 	if err != nil {
 		return
 	}
-	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+	defer c.Close(websocket.StatusInternalError, "WebSocket has been closed")
 
 	conn := websocket.NetConn(ctx, c, 1)
 
@@ -835,7 +835,7 @@ func ReceiveOffer() (string, string) {
 	if err != nil {
 		return "error", "Websocket"
 	}
-	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+	defer c.Close(websocket.StatusInternalError, "WebSocket has been closed")
 
 	conn := websocket.NetConn(ctx, c, 1)
 
@@ -863,7 +863,7 @@ func ReceiveAnswer() (string, string) {
 	if err != nil {
 		return "error", "Websocket"
 	}
-	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+	defer c.Close(websocket.StatusInternalError, "WebSocket has been closed")
 
 	conn := websocket.NetConn(ctx, c, 1)
 
@@ -892,7 +892,7 @@ func RemoveOffer() {
 	if err != nil {
 		return
 	}
-	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+	defer c.Close(websocket.StatusInternalError, "WebSocket has been closed")
 
 	conn := websocket.NetConn(ctx, c, 1)
 
@@ -911,7 +911,7 @@ func removeAnswer(senderID string) {
 	if err != nil {
 		return
 	}
-	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+	defer c.Close(websocket.StatusInternalError, "WebSocket has been closed")
 
 	conn := websocket.NetConn(ctx, c, 1)
 
@@ -928,13 +928,13 @@ func purgeWebRTCDatabase() {
 	if err != nil {
 		return
 	}
-	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+	defer c.Close(websocket.StatusInternalError, "WebSocket has been closed")
 
 	conn := websocket.NetConn(ctx, c, 1)
 
 	fmt.Fprintf(conn, "")
 
-	c.Close(websocket.StatusNormalClosure, "")
+	c.Close(websocket.StatusNormalClosure, "setup:purgeDatabase\n&0%")
 }
 
 func EstablishConnections() {

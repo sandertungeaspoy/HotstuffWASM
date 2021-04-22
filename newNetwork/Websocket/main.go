@@ -55,135 +55,32 @@ func main() {
 		log.Fatalln(err)
 	}()
 
+	l2, err2 := net.Listen("tcp", "localhost:13372")
+	if err2 != nil {
+		fmt.Println(err2)
+	}
+	log.Printf("listening on http://%v", l2.Addr())
+
+	server2 := &http.Server{
+		Handler: wasmServer{
+			logf: log.Printf,
+		},
+		ReadTimeout:  time.Second * 10,
+		WriteTimeout: time.Second * 10,
+	}
+	errc2 := make(chan error, 1)
 	go func() {
-		l, err := net.Listen("tcp", "localhost:13371")
-		if err != nil {
-			fmt.Println(err)
-		}
-		log.Printf("listening on http://%v", l.Addr())
-
-		server1 := &http.Server{
-			Handler: wasmServer{
-				logf: log.Printf,
-			},
-			ReadTimeout:  time.Second * 10,
-			WriteTimeout: time.Second * 10,
-		}
-		errc := make(chan error, 1)
-		go func() {
-			// fmt.Println("Failed At serve")
-			errc <- server1.Serve(l)
-		}()
-
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, os.Interrupt)
-		select {
-		case err := <-errc:
-			log.Printf("failed to serve: %v", err)
-		case sig := <-sigs:
-			log.Printf("terminating: %v", sig)
-		}
+		// fmt.Println("Failed At serve")
+		errc2 <- server2.Serve(l2)
 	}()
 
-	go func() {
-		l2, err2 := net.Listen("tcp", "localhost:13372")
-		if err2 != nil {
-			fmt.Println(err2)
-		}
-		log.Printf("listening on http://%v", l2.Addr())
-
-		server2 := &http.Server{
-			Handler: wasmServer{
-				logf: log.Printf,
-			},
-			ReadTimeout:  time.Second * 10,
-			WriteTimeout: time.Second * 10,
-		}
-		errc2 := make(chan error, 1)
-		go func() {
-			// fmt.Println("Failed At serve")
-			errc2 <- server2.Serve(l2)
-		}()
-
-		sigs2 := make(chan os.Signal, 1)
-		signal.Notify(sigs2, os.Interrupt)
-		select {
-		case err := <-errc2:
-			log.Printf("failed to serve: %v", err)
-		case sig := <-sigs2:
-			log.Printf("terminating: %v", sig)
-		}
-	}()
-
-	go func() {
-		l3, err3 := net.Listen("tcp", "localhost:13373")
-		if err3 != nil {
-			fmt.Println(err3)
-		}
-		log.Printf("listening on http://%v", l3.Addr())
-
-		server3 := &http.Server{
-			Handler: wasmServer{
-				logf: log.Printf,
-			},
-			ReadTimeout:  time.Second * 10,
-			WriteTimeout: time.Second * 10,
-		}
-		errc3 := make(chan error, 1)
-		go func() {
-			// fmt.Println("Failed At serve")
-			errc3 <- server3.Serve(l3)
-		}()
-
-		sigs3 := make(chan os.Signal, 1)
-		signal.Notify(sigs3, os.Interrupt)
-		select {
-		case err := <-errc3:
-			log.Printf("failed to serve: %v", err)
-		case sig := <-sigs3:
-			log.Printf("terminating: %v", sig)
-		}
-	}()
-
-	go func() {
-		l4, err4 := net.Listen("tcp", "localhost:13374")
-		if err4 != nil {
-			fmt.Println(err4)
-		}
-		log.Printf("listening on http://%v", l4.Addr())
-
-		server4 := &http.Server{
-			Handler: wasmServer{
-				logf: log.Printf,
-			},
-			ReadTimeout:  time.Second * 10,
-			WriteTimeout: time.Second * 10,
-		}
-		errc4 := make(chan error, 1)
-		go func() {
-			// fmt.Println("Failed At serve")
-			errc4 <- server4.Serve(l4)
-		}()
-
-		sigs4 := make(chan os.Signal, 1)
-		signal.Notify(sigs4, os.Interrupt)
-		select {
-		case err := <-errc4:
-			log.Printf("failed to serve: %v", err)
-		case sig := <-sigs4:
-			log.Printf("terminating: %v", sig)
-		}
-	}()
-
-	for {
-		sigsExit := make(chan os.Signal, 1)
-		signal.Notify(sigsExit, os.Interrupt)
-		select {
-		case <-sigsExit:
-			fmt.Println("Break loop close")
-			return
-		}
-
+	sigs2 := make(chan os.Signal, 1)
+	signal.Notify(sigs2, os.Interrupt)
+	select {
+	case err := <-errc2:
+		log.Printf("failed to serve: %v", err)
+	case sig := <-sigs2:
+		log.Printf("terminating: %v", sig)
 	}
 
 }
@@ -201,18 +98,10 @@ func (s wasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+	defer c.Close(websocket.StatusInternalError, "WebSocket has been closed")
 	defer cancel()
 	conn := websocket.NetConn(ctx, c, 1)
-	if strings.Split(r.Host, ":")[1] == "13371" {
-		connections.connections = make(map[string]net.Conn)
-		connections.answer = make(map[string]string)
-		connections.offer = make(map[string]string)
-		fmt.Println("Connection Map reset!")
-		conn.Close()
-		cancel()
-		return
-	}
+
 	msg, err := bufio.NewReader(conn).ReadString('%')
 	fmt.Println(msg)
 	fmt.Println("Request \"Addr\": ")
@@ -276,6 +165,14 @@ func (s wasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		connections.mux.Unlock()
+	} else if msgType == "purgeDatabase" {
+		connections.mux.Lock()
+		connections.connections = make(map[string]net.Conn)
+		connections.answer = make(map[string]string)
+		connections.offer = make(map[string]string)
+		connections.completed = make(map[string]bool)
+		connections.mux.Unlock()
+		return
 	}
 
 	fmt.Println("Accepted")
