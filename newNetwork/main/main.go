@@ -244,32 +244,17 @@ func main() {
 					fmt.Println(err)
 					continue
 				}
-				// fmt.Print("SenderID: ")
-				// fmt.Println(senderID)
-				// fmt.Print("cmd: ")
-				// fmt.Println(cmd)
-				// fmt.Print("pcString: ")
-				// fmt.Println(pcString)
-				// fmt.Println("Finish")
 				srv.Hs.Finish(block)
-				// fmt.Println("Finish done")
 				pc := StringToPartialCert(pcString)
 				fmt.Println("OnVote...")
 				srv.Hs.OnVote(pc)
 				fmt.Println("Sending byte...")
-				// fmt.Println(runtime.NumGoroutine())
 				sendLock.Lock()
-				// sendBytes = append(sendBytes, blockString)
 				SendCommand(blockString)
 				sendLock.Unlock()
-				// fmt.Println(sendBytes)
 				fmt.Println("Bytes sent...")
 			case <-recieved:
 				fmt.Println("Recieved byte...")
-				// _, cmd, obj := FormatBytes(recvBytes[0])
-				// if cmd != " PartialCert " {
-				// 	continue
-				// }
 				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
 				recvLock.Unlock()
