@@ -220,7 +220,7 @@ func main() {
 		fmt.Println("I am Leader")
 		for {
 
-			// time.Sleep(time.Millisecond * 10)
+			time.Sleep(time.Millisecond * 5)
 			fmt.Println("Waiting for reply from replicas or for new proposal to be made...")
 			select {
 			case msgByte := <-srv.Pm.Proposal:
@@ -306,14 +306,15 @@ func main() {
 				msgString := NewViewToString(msg)
 				fmt.Println("Sending timeout msg to replicas...")
 				sendLock.Lock()
-				sendBytes = append(sendBytes, []byte(msgString))
+				// sendBytes = append(sendBytes, []byte(msgString))
+				SendCommand([]byte(msgString))
 				sendLock.Unlock()
 			}
 		}
 	} else {
 		fmt.Println("I am normal replica")
 		for {
-			// time.Sleep(time.Millisecond * 100)
+			time.Sleep(time.Millisecond * 5)
 			fmt.Println("Waiting for proposal from leader...")
 			select {
 			case <-recieved:
@@ -609,6 +610,7 @@ create:
 
 	offer := "empty"
 	senderID := ""
+	attempts := 0
 	for {
 		offer, senderID = ReceiveOffer()
 		if offer == "error" {
@@ -617,7 +619,12 @@ create:
 		if offer != "empty" {
 			break
 		}
-		time.Sleep(time.Millisecond * 500)
+
+		if attempts > 10 {
+			return nil, "error"
+		}
+		attempts++
+		time.Sleep(time.Millisecond * 5000)
 	}
 
 	offersdp := webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: offer}
@@ -642,25 +649,33 @@ create:
 	// Create channel that is blocked until ICE Gathering is complete
 	gatherComplete := webrtc.GatheringCompletePromise(peerConnection)
 
-	for {
-		fmt.Println(peerConnection.ICEGatheringState())
-		if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete && strings.Contains(peerConnection.LocalDescription().SDP, "c=IN IP4 0.0.0.0") {
-			fmt.Println(peerConnection.LocalDescription().SDP)
-			DeliverAnswer(peerConnection.LocalDescription().SDP, senderID)
-			break
-		} else if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete && !strings.Contains(peerConnection.LocalDescription().SDP, "c=IN IP4 0.0.0.0") {
-			goto create
-		}
-		time.Sleep(time.Second)
+	// for {
+	// 	fmt.Println(peerConnection.ICEGatheringState())
+	// 	if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete && strings.Contains(peerConnection.LocalDescription().SDP, "c=IN IP4 0.0.0.0") {
+	// 		fmt.Println(peerConnection.LocalDescription().SDP)
+	// 		DeliverAnswer(peerConnection.LocalDescription().SDP, senderID)
+	// 		break
+	// 	} else if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete && !strings.Contains(peerConnection.LocalDescription().SDP, "c=IN IP4 0.0.0.0") {
+	// 		goto create
+	// 	}
+	// 	// time.Sleep(time.Second)
 
-	}
+	// }
 
 	<-gatherComplete
+
+	if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete && strings.Contains(peerConnection.LocalDescription().SDP, "c=IN IP4 0.0.0.0") {
+		fmt.Println(peerConnection.LocalDescription().SDP)
+		DeliverAnswer(peerConnection.LocalDescription().SDP, senderID)
+
+	} else if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete && !strings.Contains(peerConnection.LocalDescription().SDP, "c=IN IP4 0.0.0.0") {
+		goto create
+	}
 
 	<-waiter
 
 	removeAnswer(senderID)
-
+	fmt.Println("Returning")
 	return dc, senderID
 }
 
@@ -746,21 +761,27 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 		panic(err)
 	}
 
-	for {
-		fmt.Println(peerConnection.ICEGatheringState())
-		if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete {
-			fmt.Println(peerConnection.LocalDescription().SDP)
-			DeliverOffer(peerConnection.LocalDescription().SDP)
-			break
-		}
-		time.Sleep(time.Second)
+	// for {
+	// 	fmt.Println(peerConnection.ICEGatheringState())
+	// 	if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete {
+	// 		fmt.Println(peerConnection.LocalDescription().SDP)
+	// 		DeliverOffer(peerConnection.LocalDescription().SDP)
+	// 		break
+	// 	}
+	// 	// time.Sleep(time.Second)
 
-	}
+	// }
 
 	<-gatherComplete
 
+	if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete {
+		fmt.Println(peerConnection.LocalDescription().SDP)
+		DeliverOffer(peerConnection.LocalDescription().SDP)
+	}
+
 	answer := "empty"
 	senderID := ""
+	attempts := 0
 	for {
 		answer, senderID = ReceiveAnswer()
 		if answer == "error" {
@@ -769,7 +790,11 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 		if answer != "empty" {
 			break
 		}
-		time.Sleep(time.Millisecond * 500)
+		if attempts > 10 {
+			return nil, "error"
+		}
+		attempts++
+		time.Sleep(time.Millisecond * 5000)
 	}
 
 	fmt.Println(answer)
@@ -786,6 +811,7 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 
 	<-waiter
 	RemoveOffer()
+	fmt.Println("Returning")
 	return dataChannel, senderID
 }
 
@@ -943,8 +969,8 @@ func EstablishConnections() {
 		if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()+1) {
 
 			dc, peerID := ConnectToPeer()
-			if peerID == "error" {
-				time.Sleep(time.Second * 30)
+			if peerID == "error" || peerID == "empty" {
+				time.Sleep(time.Second * 5)
 				continue
 			}
 
@@ -952,13 +978,16 @@ func EstablishConnections() {
 			peerIDHot := hotstuff.ID(peerIDUint)
 
 			peerMap[peerIDHot] = dc
+			if len(peerMap) == 3 {
+				break
+			}
 
 		} else {
 
 			if len(peerMap) == 0 {
 				dc, leaderID := ConnectToLeader()
-				if leaderID == "error" {
-					time.Sleep(time.Second * 30)
+				if leaderID == "error" || leaderID == "empty" {
+					// time.Sleep(time.Second * 5)
 					continue
 				}
 
@@ -966,8 +995,9 @@ func EstablishConnections() {
 				leaderIDHot := hotstuff.ID(leaderIDUint)
 
 				peerMap[leaderIDHot] = dc
+				break
 			}
-			time.Sleep(time.Second * 5)
+			time.Sleep(time.Second * 30)
 		}
 	}
 
