@@ -220,7 +220,7 @@ func main() {
 		fmt.Println("I am Leader")
 		for {
 
-			time.Sleep(time.Millisecond * 5)
+			time.Sleep(time.Millisecond * 100)
 			fmt.Println("Waiting for reply from replicas or for new proposal to be made...")
 			select {
 			case msgByte := <-srv.Pm.Proposal:
@@ -314,7 +314,7 @@ func main() {
 	} else {
 		fmt.Println("I am normal replica")
 		for {
-			time.Sleep(time.Millisecond * 5)
+			time.Sleep(time.Millisecond * 100)
 			fmt.Println("Waiting for proposal from leader...")
 			select {
 			case <-recieved:
