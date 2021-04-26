@@ -65,7 +65,7 @@ func (s *Synchronizer) Init(hs hotstuff.Consensus) {
 func (s *Synchronizer) Start() {
 	if s.GetLeader(s.hs.Leaf().GetView()+1) == s.hs.Config().ID() {
 		// fmt.Println("Proposing")
-		// s.Proposal <- s.hs.Propose()
+		s.Proposal <- s.hs.Propose()
 		// fmt.Println("Proposed on channel")
 	}
 	s.timer = time.NewTimer(s.timeout)
