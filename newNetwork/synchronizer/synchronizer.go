@@ -24,6 +24,7 @@ type Synchronizer struct {
 	stopped  bool
 	Proposal chan []byte
 	NewView  chan bool
+	PropDone bool
 }
 
 // New creates a new Synchronizer.
@@ -66,6 +67,7 @@ func (s *Synchronizer) Start() {
 	if s.GetLeader(s.hs.Leaf().GetView()+1) == s.hs.Config().ID() {
 		// fmt.Println("Proposing")
 		s.Proposal <- s.hs.Propose()
+		s.PropDone = false
 		// fmt.Println("Proposed on channel")
 	}
 	s.timer = time.NewTimer(s.timeout)
@@ -79,7 +81,6 @@ func (s *Synchronizer) Start() {
 // Stop stops the synchronizer.
 func (s *Synchronizer) Stop() {
 	s.stopped = true
-	s.stop()
 	s.mut.Lock()
 	if s.timer != nil && !s.timer.Stop() {
 		<-s.timer.C
@@ -109,6 +110,7 @@ func (s *Synchronizer) beat() {
 	s.lastBeat = view
 	s.mut.Unlock()
 	go func() {
+		s.PropDone = false
 		s.Proposal <- s.hs.Propose()
 	}()
 }

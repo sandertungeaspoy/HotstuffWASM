@@ -253,6 +253,7 @@ func main() {
 				SendCommand(blockString)
 				sendLock.Unlock()
 				fmt.Println("Bytes sent...")
+				srv.Pm.PropDone = true
 			case <-recieved:
 				fmt.Println("Recieved byte...")
 				recvLock.Lock()
@@ -310,7 +311,9 @@ func main() {
 				SendCommand([]byte(msgString))
 				sendLock.Unlock()
 			}
-			if srv.Hs.BlockChain().Len() == 50 {
+			if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == 50 {
+				srv.Pm.Stop()
+				fmt.Println("Pacemaker stopped...")
 				break
 			}
 		}
@@ -362,8 +365,8 @@ func main() {
 					continue
 				}
 				srv.Hs.Finish(block)
-				pc := StringToPartialCert(pcString)
-				srv.Hs.OnVote(pc)
+				// pc := StringToPartialCert(pcString)
+				// srv.Hs.OnVote(pc)
 				fmt.Println("Sending PC to leader...")
 				sendLock.Lock()
 				// sendBytes = append(sendBytes, []byte(pcString))
@@ -386,6 +389,8 @@ func main() {
 				SendCommand([]byte(cmdString))
 			}
 			if srv.Hs.BlockChain().Len() == 50 {
+				srv.Pm.Stop()
+				fmt.Println("Pacemaker stopped...")
 				break
 			}
 		}
