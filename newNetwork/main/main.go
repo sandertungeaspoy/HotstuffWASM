@@ -212,7 +212,7 @@ func main() {
 
 	srv.Pm.Init(srv.Hs)
 
-	srv.Pm.Start()
+	// srv.Pm.Start()
 
 	go EstablishConnections()
 
@@ -965,8 +965,14 @@ func purgeWebRTCDatabase() {
 
 func EstablishConnections() {
 
+	started := false
+
 	for {
 		if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()+1) {
+			if len(peerMap) == 3 {
+				time.Sleep(time.Second * 20)
+				continue
+			}
 
 			dc, peerID := ConnectToPeer()
 			if peerID == "error" || peerID == "empty" {
@@ -978,8 +984,9 @@ func EstablishConnections() {
 			peerIDHot := hotstuff.ID(peerIDUint)
 
 			peerMap[peerIDHot] = dc
-			if len(peerMap) == 3 {
-				break
+			if len(peerMap) == 3 && !started {
+				srv.Pm.Start()
+				started = true
 			}
 
 		} else {
@@ -995,7 +1002,7 @@ func EstablishConnections() {
 				leaderIDHot := hotstuff.ID(leaderIDUint)
 
 				peerMap[leaderIDHot] = dc
-				break
+				srv.Pm.Start()
 			}
 			time.Sleep(time.Second * 30)
 		}
