@@ -310,6 +310,9 @@ func main() {
 				SendCommand([]byte(msgString))
 				sendLock.Unlock()
 			}
+			if srv.Hs.BlockChain().Len() == 50 {
+				break
+			}
 		}
 	} else {
 		fmt.Println("I am normal replica")
@@ -382,8 +385,12 @@ func main() {
 				// sendBytes = append(sendBytes, []byte(cmdString))
 				SendCommand([]byte(cmdString))
 			}
+			if srv.Hs.BlockChain().Len() == 50 {
+				break
+			}
 		}
 	}
+	time.Sleep(time.Minute * 2)
 }
 
 // FormatBytes returns the ID of the sender, the command and the block
