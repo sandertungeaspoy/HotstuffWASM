@@ -42,6 +42,8 @@ var cmdLock sync.Mutex
 
 var peerMap map[hotstuff.ID]*webrtc.DataChannel
 
+var starter chan struct{}
+
 func main() {
 	registerCallbacks()
 
@@ -171,15 +173,15 @@ func main() {
 	addr[3] = "127.0.0.1:13373"
 	addr[4] = "127.0.0.1:13374"
 
-	// leaderRotation := leaderrotation.NewFixed(hotstuff.ID(1))
+	leaderRotation := leaderrotation.NewFixed(hotstuff.ID(1))
 
-	// pm := synchronizer.New(leaderRotation, time.Duration(50)*time.Second)
+	pm := synchronizer.New(leaderRotation, time.Duration(50)*time.Second)
 	var cfg *server.Config
 
 	srv = server.Server{
-		ID:   serverID,
-		Addr: addr[int(serverID)],
-		// Pm:        pm,
+		ID:        serverID,
+		Addr:      addr[int(serverID)],
+		Pm:        pm,
 		Cfg:       cfg,
 		PubKey:    pubKey[serverID],
 		Cert:      cert[serverID],
@@ -201,9 +203,10 @@ func main() {
 
 	srv.Cfg = server.NewConfig(*replicaConfig)
 
-	leaderrotation := leaderrotation.NewRoundRobin(srv.Cfg)
-	pm := synchronizer.New(leaderrotation, time.Duration(50)*time.Second)
-	srv.Pm = pm
+	// Round robin
+	// leaderrotation := leaderrotation.NewRoundRobin(srv.Cfg)
+	// pm := synchronizer.New(leaderrotation, time.Duration(50)*time.Second)
+	// srv.Pm = pm
 
 	hs := consensus.Builder{
 		Config:       srv.Cfg,
@@ -220,7 +223,7 @@ func main() {
 	// srv.Pm.Start()
 
 	go EstablishConnections()
-
+	// restart:
 	for {
 		if srv.Pm.GetLeader(hs.Leaf().GetView()) != srv.Pm.GetLeader(hs.Leaf().GetView()+1) {
 			purgeWebRTCDatabase()
@@ -230,9 +233,9 @@ func main() {
 			srv.Pm.Start()
 		}
 		if srv.ID == srv.Pm.GetLeader(hs.Leaf().GetView()+1) {
-			fmt.Println("I am Leader")
-			time.Sleep(time.Millisecond * 100)
-			fmt.Println("Waiting for reply from replicas or for new proposal to be made...")
+			// fmt.Println("I am Leader")
+			// time.Sleep(time.Millisecond * 20)
+			// fmt.Println("Waiting for reply from replicas or for new proposal to be made...")
 			select {
 			case msgByte := <-srv.Pm.Proposal:
 				if msgByte == nil {
@@ -243,12 +246,12 @@ func main() {
 				if senderID != srv.ID && cmd != "Propose" {
 					continue
 				}
-				fmt.Println("Formating string to block...")
+				// fmt.Println("Formating string to block...")
 				block := StringToBlock(obj)
 				// fmt.Print("Formated block: ")
 				// fmt.Println(block)
 
-				fmt.Println("OnPropose...")
+				// fmt.Println("OnPropose...")
 				// fmt.Print(block.Parent)
 				pcString, err := srv.Hs.OnPropose(block)
 				if err != nil {
@@ -257,21 +260,21 @@ func main() {
 				}
 				srv.Hs.Finish(block)
 				pc := StringToPartialCert(pcString)
-				fmt.Println("OnVote...")
+				// fmt.Println("OnVote...")
 				srv.Hs.OnVote(pc)
-				fmt.Println("Sending byte...")
+				// fmt.Println("Sending byte...")
 				sendLock.Lock()
 				SendCommand(blockString)
 				sendLock.Unlock()
-				fmt.Println("Bytes sent...")
+				// fmt.Println("Bytes sent...")
 				srv.Pm.PropDone = true
 			case <-recieved:
-				fmt.Println("Recieved byte...")
+				// fmt.Println("Recieved byte...")
 				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
 				recvLock.Unlock()
 				if newView[0] == "NewView" {
-					fmt.Println("Recieved timeout from replica")
+					// fmt.Println("Recieved timeout from replica")
 					recvLock.Lock()
 					msg := StringToNewView(string(recvBytes[0]))
 					recvLock.Unlock()
@@ -290,7 +293,7 @@ func main() {
 				recvLock.Lock()
 				cmd := strings.Split(string(recvBytes[0]), ":")
 				if cmd[0] == "Command" {
-					fmt.Println("Recieved command: " + cmd[1])
+					// fmt.Println("Recieved command: " + cmd[1])
 					cmdString := cmd[1]
 					if len(recvBytes) > 1 {
 						recvBytes = recvBytes[1:]
@@ -312,6 +315,11 @@ func main() {
 				}
 				recvLock.Unlock()
 				srv.Hs.OnVote(pc)
+				// if srv.Hs.BlockChain().Len()%50 == 0 {
+				// 	srv.Pm.Stop()
+				// 	fmt.Println("Pacemaker stopped...")
+				// 	break
+				// }
 			case <-srv.Pm.NewView:
 				msg := srv.Hs.NewView()
 				srv.Hs.OnNewView(msg)
@@ -322,18 +330,18 @@ func main() {
 				SendCommand([]byte(msgString))
 				sendLock.Unlock()
 			}
-			if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == 50 {
-				srv.Pm.Stop()
-				fmt.Println("Pacemaker stopped...")
-				return
-			}
+			// if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == 50 {
+			// 	srv.Pm.Stop()
+			// 	fmt.Println("Pacemaker stopped...")
+			// 	return
+			// }
 		} else {
-			fmt.Println("I am normal replica")
-			time.Sleep(time.Millisecond * 100)
-			fmt.Println("Waiting for proposal from leader...")
+			// fmt.Println("I am normal replica")
+			// time.Sleep(time.Millisecond * 50)
+			// fmt.Println("Waiting for proposal from leader...")
 			select {
 			case <-recieved:
-				fmt.Println("Recieved byte from leader...")
+				// fmt.Println("Recieved byte from leader...")
 				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
 				recvLock.Unlock()
@@ -366,7 +374,7 @@ func main() {
 					continue
 				}
 				block := StringToBlock(obj)
-				fmt.Print("Handle propose for view: ")
+				// fmt.Print("Handle propose for view: ")
 				fmt.Println(block.View)
 				pcString, err := srv.Hs.OnPropose(block)
 				if err != nil {
@@ -374,11 +382,11 @@ func main() {
 					continue
 				}
 				srv.Hs.Finish(block)
-				fmt.Print("Next view: ")
-				fmt.Println(hs.Leaf().GetView() + 1)
+				// fmt.Print("Next view: ")
+				// fmt.Println(hs.Leaf().GetView() + 1)
 				// pc := StringToPartialCert(pcString)
 				// srv.Hs.OnVote(pc)
-				fmt.Println("Sending PC to leader...")
+				// fmt.Println("Sending PC to leader...")
 				sendLock.Lock()
 				// sendBytes = append(sendBytes, []byte(pcString))
 				SendCommand([]byte(pcString))
@@ -395,17 +403,34 @@ func main() {
 			case cmd := <-incomingCmd:
 				cmdString := "Command:" + cmd
 
-				fmt.Println("Sending command to leader...")
+				// fmt.Println("Sending command to leader...")
 				// sendBytes = append(sendBytes, []byte(cmdString))
 				SendCommand([]byte(cmdString))
 			}
-			if srv.Hs.BlockChain().Len() == 50 {
-				srv.Pm.Stop()
-				fmt.Println("Pacemaker stopped...")
-				return
-			}
+			// if srv.Hs.BlockChain().Len() == 50 {
+			// 	srv.Pm.Stop()
+			// 	fmt.Println("Pacemaker stopped...")
+			// 	return
+			// }
+			// if srv.Hs.BlockChain().Len()%50 == 0 {
+			// 	srv.Pm.Stop()
+			// 	fmt.Println("Pacemaker stopped...")
+			// 	break
+			// }
 		}
 	}
+	// fmt.Println("Waiting to restart")
+	// for {
+	// 	select {
+	// 	case <-starter:
+	// 		fmt.Println("Restarting")
+	// 		srv.Pm.Start()
+	// 		goto restart
+	// 	}
+	// }
+	// time.Sleep(time.Second * 5)
+	// srv.Pm.Start()
+	// goto restart
 }
 
 // FormatBytes returns the ID of the sender, the command and the block
@@ -1149,6 +1174,12 @@ func GetCommand(this js.Value, i []js.Value) interface{} {
 	}
 	return nil
 }
+func StartAgain(this js.Value, args []js.Value) interface{} {
+	// fmt.Println("Before")
+	starter <- struct{}{}
+	// fmt.Println("After")
+	return nil
+}
 
 func registerCallbacks() {
 	js.Global().Set("GetSelfID", js.FuncOf(GetSelfID))
@@ -1156,6 +1187,7 @@ func registerCallbacks() {
 	js.Global().Set("PassUint8ArrayToGo", js.FuncOf(PassUint8ArrayToGo))
 	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
 	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))
+	js.Global().Set("StartAgain", js.FuncOf(StartAgain))
 }
 
 // defer elapsed("GetSelfID")()

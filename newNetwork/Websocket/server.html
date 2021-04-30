@@ -65,17 +65,21 @@
 			<!-- <button onClick="passUint8ArrayToGo();" id="SendButton">Send</button> -->
             <button onClick="assignHandler();" id="RecvButton">Assign</button>
 			<button onClick="run();" id="runButton">Run</button>
-            <button onClick="startTraffic();" id="startButton" >Start Traffic</button>
+            <button onClick="StartAgain();" id="startButton" >Start Again</button>
             <button onclick="restartWebRTCHandler();" id="restartButton">Restart WebRTC handler</button>
             Command:<input type="text" id="command" name="cmd">
             <button onClick="GetCommand('command');">Send command</button>
 	</body>
 
     <script>
+        intervalClearConsole = window.setInterval(function(){
+            console.clear();
+          }, 10000);
 
         function restartWebRTCHandler() {
-            var wsRestart = new WebSocket("ws://localhost:13371");
+            var wsRestart = new WebSocket("ws://localhost:13372");
             wsRestart.onopen = function() {
+                wsRestart.send("setup:purgeDatabase\n&0%");
                 console.log("Web RTC Handler restarted!");
             };
         };
