@@ -3,7 +3,6 @@ package consensus
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -98,7 +97,7 @@ func (hs *chainedhotstuff) BlockChain() hotstuff.BlockChain {
 }
 
 func (hs *chainedhotstuff) CreateDummy() {
-	fmt.Println("Creating dummy...")
+	// fmt.Println("Creating dummy...")
 	hs.mut.Lock()
 	dummy := hotstuff.NewBlock(hs.bLeaf.Hash(), nil, hotstuff.Command(""), hs.bLeaf.GetView()+1, hs.cfg.ID())
 	hs.blocks.Store(dummy)
@@ -110,21 +109,21 @@ func (hs *chainedhotstuff) updateHighQC(qc hotstuff.QuorumCert) {
 	// logger.Debugf("updateHighQC: %v", qc)
 	if !hs.verifier.VerifyQuorumCert(qc) {
 		// logger.Info("updateHighQC: QC could not be verified!")
-		fmt.Println("updateHighQC: QC could not be verified!")
+		// fmt.Println("updateHighQC: QC could not be verified!")
 		return
 	}
 
 	newBlock, ok := hs.blocks.Get(qc.BlockHash())
 	if !ok {
 		// logger.Info("updateHighQC: Could not find block referenced by new QC!")
-		fmt.Println("updateHighQC: Could not find block referenced by new QC!")
+		// fmt.Println("updateHighQC: Could not find block referenced by new QC!")
 		return
 	}
 
 	oldBlock, ok := hs.blocks.Get(hs.highQC.BlockHash())
 	if !ok {
 		// logger.Panic("Block from the old highQC missing from chain")
-		fmt.Println("Block from the old highQC missing from chain")
+		// fmt.Println("Block from the old highQC missing from chain")
 	}
 
 	if newBlock.GetView() > oldBlock.GetView() {
@@ -188,7 +187,7 @@ func (hs *chainedhotstuff) update(block *hotstuff.Block) {
 // Propose proposes the given command
 func (hs *chainedhotstuff) Propose() []byte {
 	hs.mut.Lock()
-	fmt.Println("Generating proposal")
+	// fmt.Println("Generating proposal")
 	// fmt.Println(hs.commands)
 	cmd := hs.commands.GetCommand()
 	// TODO: Should probably use channels/contexts here instead such that
@@ -223,8 +222,8 @@ func (hs *chainedhotstuff) Propose() []byte {
 	// fmt.Print("bLeaf.GetView(): ")
 	// fmt.Print(hs.bLeaf.GetView())
 	block := hotstuff.NewBlock(hs.bLeaf.Hash(), hs.highQC, c, hs.bLeaf.GetView()+1, hs.cfg.ID())
-	fmt.Print("Propose on view: ")
-	fmt.Println(hs.bLeaf.View + 1)
+	// fmt.Print("Propose on view: ")
+	// fmt.Println(hs.bLeaf.View + 1)
 
 	hs.blocks.Store(block)
 	hs.mut.Unlock()
@@ -255,7 +254,7 @@ func (hs *chainedhotstuff) NewView() hotstuff.NewView {
 	if leaderID == hs.cfg.ID() {
 		hs.mut.Unlock()
 		// TODO: Is this necessary
-		fmt.Println("Leader OnNewView")
+		// fmt.Println("Leader OnNewView")
 		return msg
 	}
 	// leader, ok := hs.cfg.Replica(leaderID)
@@ -296,7 +295,7 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 			safe = true
 		} else {
 			// logger.Debug("OnPropose: safety condition failed")
-			fmt.Println("OnPropose: safety condition failed")
+			// fmt.Println("OnPropose: safety condition failed")
 		}
 	}
 
@@ -408,7 +407,7 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 	// fmt.Println(cert.BlockHash())
 	block, ok := hs.blocks.Get(cert.BlockHash())
 	if !ok {
-		fmt.Println("Not ok")
+		// fmt.Println("Not ok")
 		// logger.Debugf("Could not find block for vote: %.8s. Attempting to fetch.", cert.BlockHash())
 		hs.fetchBlockForVote(cert)
 		return
@@ -423,14 +422,14 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 	if block.GetView() <= hs.bLeaf.GetView() {
 		// too old
 		hs.mut.Unlock()
-		fmt.Println("View is too old")
+		// fmt.Println("View is too old")
 		return
 	}
 
 	if !hs.verifier.VerifyPartialCert(cert) {
 		// logger.Info("OnVote: Vote could not be verified!")
 		hs.mut.Unlock()
-		fmt.Println("OnVote: Vote could not be verified!")
+		// fmt.Println("OnVote: Vote could not be verified!")
 		return
 	}
 
@@ -442,17 +441,17 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 
 	if len(votes) < hs.cfg.QuorumSize() {
 		hs.mut.Unlock()
-		fmt.Println("Not enough votes, returning...")
+		// fmt.Println("Not enough votes, returning...")
 		return
 	}
 
 	qc, err := hs.signer.CreateQuorumCert(block, votes)
 	if err != nil {
 		// logger.Info("OnVote: could not create QC for block: ", err)
-		fmt.Println("OnVote: could not create QC for block: ", err)
+		// fmt.Println("OnVote: could not create QC for block: ", err)
 	}
 	delete(hs.verifiedVotes, cert.BlockHash())
-	fmt.Println("Update HighQC")
+	// fmt.Println("Update HighQC")
 	hs.updateHighQC(qc)
 
 	hs.mut.Unlock()
@@ -479,7 +478,7 @@ func (hs *chainedhotstuff) OnNewView(msg hotstuff.NewView) {
 	// fmt.Println("OnNewView Pre Lock")
 	hs.mut.Lock()
 	// fmt.Println("Post lock")
-	fmt.Println("OnNewView: ", msg)
+	// fmt.Println("OnNewView: ", msg)
 
 	hs.updateHighQC(msg.QC)
 
@@ -493,7 +492,7 @@ func (hs *chainedhotstuff) OnNewView(msg hotstuff.NewView) {
 
 		if len(hs.newView[msg.View]) < hs.cfg.QuorumSize() {
 			hs.mut.Unlock()
-			fmt.Println("Not quorum for newView")
+			// fmt.Println("Not quorum for newView")
 			return
 		}
 	}
