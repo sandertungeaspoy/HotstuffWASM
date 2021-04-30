@@ -159,7 +159,7 @@ func (cfg *Config) Replica(id hotstuff.ID) (replica hotstuff.Replica, ok bool) {
 
 // Len returns the number of replicas in the configuration.
 func (cfg *Config) Len() int {
-	return len(cfg.replicas)
+	return len(cfg.replicas) - 1
 }
 
 // QuorumSize returns the size of a quorum

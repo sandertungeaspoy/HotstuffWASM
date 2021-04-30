@@ -60,3 +60,7 @@ func (chain *blockChain) Get(hash hotstuff.Hash) (*hotstuff.Block, bool) {
 
 	return elem.Value.(*hotstuff.Block), true
 }
+
+func (chain *blockChain) Len() int {
+	return len(chain.Blocks)
+}

@@ -166,6 +166,8 @@ type BlockChain interface {
 	Store(*Block)
 	// Get retrieves a block given its hash.
 	Get(Hash) (*Block, bool)
+	// Len returns the length of the blockchain
+	Len() int
 }
 
 // NewView represents a new-view message.
