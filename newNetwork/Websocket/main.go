@@ -106,6 +106,10 @@ func (s wasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(msg)
 	fmt.Println("Request \"Addr\": ")
 	fmt.Println(r.Host)
+	if strings.TrimSpace(msg) == "" {
+		fmt.Println(err)
+		return
+	}
 	msgs := strings.Split(msg, "&")
 	senderID := strings.Split(msgs[1], "%")
 	msgType := strings.Split(strings.Split(msgs[0], "setup:")[1], "\n")[0]

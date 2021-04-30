@@ -171,14 +171,15 @@ func main() {
 	addr[3] = "127.0.0.1:13373"
 	addr[4] = "127.0.0.1:13374"
 
-	leaderRotation := leaderrotation.NewFixed(hotstuff.ID(1))
-	pm := synchronizer.New(leaderRotation, time.Duration(50)*time.Second)
+	// leaderRotation := leaderrotation.NewFixed(hotstuff.ID(1))
+
+	// pm := synchronizer.New(leaderRotation, time.Duration(50)*time.Second)
 	var cfg *server.Config
 
 	srv = server.Server{
-		ID:        serverID,
-		Addr:      addr[int(serverID)],
-		Pm:        pm,
+		ID:   serverID,
+		Addr: addr[int(serverID)],
+		// Pm:        pm,
 		Cfg:       cfg,
 		PubKey:    pubKey[serverID],
 		Cert:      cert[serverID],
@@ -200,6 +201,10 @@ func main() {
 
 	srv.Cfg = server.NewConfig(*replicaConfig)
 
+	leaderrotation := leaderrotation.NewRoundRobin(srv.Cfg)
+	pm := synchronizer.New(leaderrotation, time.Duration(50)*time.Second)
+	srv.Pm = pm
+
 	hs := consensus.Builder{
 		Config:       srv.Cfg,
 		Acceptor:     &srv.Cmds,
@@ -216,10 +221,16 @@ func main() {
 
 	go EstablishConnections()
 
-	if srv.ID == srv.Pm.GetLeader(hs.Leaf().GetView()+1) {
-		fmt.Println("I am Leader")
-		for {
-
+	for {
+		if srv.Pm.GetLeader(hs.Leaf().GetView()) != srv.Pm.GetLeader(hs.Leaf().GetView()+1) {
+			purgeWebRTCDatabase()
+			for _, peer := range peerMap {
+				peer.Close()
+			}
+			srv.Pm.Start()
+		}
+		if srv.ID == srv.Pm.GetLeader(hs.Leaf().GetView()+1) {
+			fmt.Println("I am Leader")
 			time.Sleep(time.Millisecond * 100)
 			fmt.Println("Waiting for reply from replicas or for new proposal to be made...")
 			select {
@@ -314,12 +325,10 @@ func main() {
 			if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == 50 {
 				srv.Pm.Stop()
 				fmt.Println("Pacemaker stopped...")
-				break
+				return
 			}
-		}
-	} else {
-		fmt.Println("I am normal replica")
-		for {
+		} else {
+			fmt.Println("I am normal replica")
 			time.Sleep(time.Millisecond * 100)
 			fmt.Println("Waiting for proposal from leader...")
 			select {
@@ -365,6 +374,8 @@ func main() {
 					continue
 				}
 				srv.Hs.Finish(block)
+				fmt.Print("Next view: ")
+				fmt.Println(hs.Leaf().GetView() + 1)
 				// pc := StringToPartialCert(pcString)
 				// srv.Hs.OnVote(pc)
 				fmt.Println("Sending PC to leader...")
@@ -391,11 +402,10 @@ func main() {
 			if srv.Hs.BlockChain().Len() == 50 {
 				srv.Pm.Stop()
 				fmt.Println("Pacemaker stopped...")
-				break
+				return
 			}
 		}
 	}
-	time.Sleep(time.Minute * 2)
 }
 
 // FormatBytes returns the ID of the sender, the command and the block
@@ -407,6 +417,9 @@ func FormatBytes(msg []byte) (id hotstuff.ID, cmd string, obj string) {
 		// fmt.Println(msgString)
 		// fmt.Print("Byte of msg: ")
 		// fmt.Println(msgStringByte[1])
+		if len(msgStringByte) == 1 {
+			return hotstuff.ID(0), "", ""
+		}
 
 		idString, _ := strconv.ParseUint(msgStringByte[1], 10, 32)
 		id = hotstuff.ID(idString)
@@ -741,12 +754,8 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 	dataChannel.OnClose(func() {
 		fmt.Printf("Data channel '%s'-'%d' has been closed\n", dataChannel.Label(), dataChannel.ID())
 
-		peerKey, ok := mapkeyDataChannel(peerMap, dataChannel)
-
-		if ok {
-			delete(peerMap, peerKey)
-			RemoveOffer()
-		}
+		peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
+		purgeWebRTCDatabase()
 
 	})
 
@@ -962,7 +971,7 @@ func purgeWebRTCDatabase() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://localhost:13371", nil)
+	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
 	if err != nil {
 		return
 	}
@@ -978,9 +987,15 @@ func purgeWebRTCDatabase() {
 func EstablishConnections() {
 
 	started := false
+	leader := false
 
 	for {
 		if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()+1) {
+			if leader == false {
+				purgeWebRTCDatabase()
+				leader = true
+			}
+
 			if len(peerMap) == 3 {
 				time.Sleep(time.Second * 20)
 				continue
@@ -997,7 +1012,8 @@ func EstablishConnections() {
 
 			peerMap[peerIDHot] = dc
 			if len(peerMap) == 3 && !started {
-				srv.Pm.Start()
+				srv.Pm.Proposal <- srv.Hs.Propose()
+				srv.Pm.PropDone = false
 				started = true
 			}
 
