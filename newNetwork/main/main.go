@@ -1012,15 +1012,10 @@ func purgeWebRTCDatabase() {
 func EstablishConnections() {
 
 	started := false
-	leader := false
+	// leader := false
 
-	for {
-		if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()+1) {
-			if leader == false {
-				purgeWebRTCDatabase()
-				leader = true
-			}
-
+	if srv.ID == hotstuff.ID(1) {
+		for {
 			if len(peerMap) == 3 {
 				time.Sleep(time.Second * 20)
 				continue
@@ -1037,13 +1032,14 @@ func EstablishConnections() {
 
 			peerMap[peerIDHot] = dc
 			if len(peerMap) == 3 && !started {
+				purgeWebRTCDatabase()
 				srv.Pm.Proposal <- srv.Hs.Propose()
 				srv.Pm.PropDone = false
 				started = true
 			}
-
-		} else {
-
+		}
+	} else if srv.ID == hotstuff.ID(2) {
+		for {
 			if len(peerMap) == 0 {
 				dc, leaderID := ConnectToLeader()
 				if leaderID == "error" || leaderID == "empty" {
@@ -1056,10 +1052,140 @@ func EstablishConnections() {
 
 				peerMap[leaderIDHot] = dc
 				srv.Pm.Start()
+			} else if len(peerMap) > 0 {
+				if len(peerMap) == 3 {
+					time.Sleep(time.Second * 20)
+					continue
+				}
+
+				dc, peerID := ConnectToPeer()
+				if peerID == "error" || peerID == "empty" {
+					time.Sleep(time.Second * 5)
+					continue
+				}
+
+				peerIDUint, _ := strconv.ParseUint(peerID, 10, 32)
+				peerIDHot := hotstuff.ID(peerIDUint)
+
+				peerMap[peerIDHot] = dc
+				if len(peerMap) == 3 && !started {
+					purgeWebRTCDatabase()
+					srv.Pm.Proposal <- srv.Hs.Propose()
+					srv.Pm.PropDone = false
+					started = true
+				}
 			}
-			time.Sleep(time.Second * 30)
+			time.Sleep(time.Second * 5)
+		}
+	} else if srv.ID == hotstuff.ID(3) {
+		for {
+			if len(peerMap) < 2 {
+				dc, leaderID := ConnectToLeader()
+				if leaderID == "error" || leaderID == "empty" {
+					// time.Sleep(time.Second * 5)
+					continue
+				}
+
+				leaderIDUint, _ := strconv.ParseUint(leaderID, 10, 32)
+				leaderIDHot := hotstuff.ID(leaderIDUint)
+
+				peerMap[leaderIDHot] = dc
+				srv.Pm.Start()
+			} else if len(peerMap) > 1 {
+				if len(peerMap) == 3 {
+					time.Sleep(time.Second * 20)
+					continue
+				}
+
+				dc, peerID := ConnectToPeer()
+				if peerID == "error" || peerID == "empty" {
+					time.Sleep(time.Second * 5)
+					continue
+				}
+
+				peerIDUint, _ := strconv.ParseUint(peerID, 10, 32)
+				peerIDHot := hotstuff.ID(peerIDUint)
+
+				peerMap[peerIDHot] = dc
+				if len(peerMap) == 3 && !started {
+					purgeWebRTCDatabase()
+					srv.Pm.Proposal <- srv.Hs.Propose()
+					srv.Pm.PropDone = false
+					started = true
+				}
+			}
+			time.Sleep(time.Second * 5)
+		}
+	} else if srv.ID == hotstuff.ID(4) {
+		for {
+			if len(peerMap) < 3 {
+				dc, leaderID := ConnectToLeader()
+				if leaderID == "error" || leaderID == "empty" {
+					// time.Sleep(time.Second * 5)
+					continue
+				}
+
+				leaderIDUint, _ := strconv.ParseUint(leaderID, 10, 32)
+				leaderIDHot := hotstuff.ID(leaderIDUint)
+
+				peerMap[leaderIDHot] = dc
+
+				if len(peerMap) == 3 && !started {
+					purgeWebRTCDatabase()
+					srv.Pm.Proposal <- srv.Hs.Propose()
+					srv.Pm.PropDone = false
+					started = true
+				}
+			}
+			time.Sleep(time.Second * 5)
 		}
 	}
+
+	// for {
+	// 	if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()+1) {
+	// 		if leader == false {
+	// 			purgeWebRTCDatabase()
+	// 			leader = true
+	// 		}
+
+	// 		if len(peerMap) == 3 {
+	// 			time.Sleep(time.Second * 20)
+	// 			continue
+	// 		}
+
+	// 		dc, peerID := ConnectToPeer()
+	// 		if peerID == "error" || peerID == "empty" {
+	// 			time.Sleep(time.Second * 5)
+	// 			continue
+	// 		}
+
+	// 		peerIDUint, _ := strconv.ParseUint(peerID, 10, 32)
+	// 		peerIDHot := hotstuff.ID(peerIDUint)
+
+	// 		peerMap[peerIDHot] = dc
+	// 		if len(peerMap) == 3 && !started {
+	// 			srv.Pm.Proposal <- srv.Hs.Propose()
+	// 			srv.Pm.PropDone = false
+	// 			started = true
+	// 		}
+
+	// 	} else {
+	// 		if len(peerMap) == 0 {
+	// 			dc, leaderID := ConnectToLeader()
+	// 			if leaderID == "error" || leaderID == "empty" {
+	// 				// time.Sleep(time.Second * 5)
+	// 				continue
+	// 			}
+
+	// 			leaderIDUint, _ := strconv.ParseUint(leaderID, 10, 32)
+	// 			leaderIDHot := hotstuff.ID(leaderIDUint)
+
+	// 			peerMap[leaderIDHot] = dc
+	// 			srv.Pm.Start()
+	// 		}
+	// 		time.Sleep(time.Second * 30)
+	// 	}
+	// }
 
 }
 
