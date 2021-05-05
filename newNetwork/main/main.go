@@ -173,15 +173,15 @@ func main() {
 	addr[3] = "127.0.0.1:13373"
 	addr[4] = "127.0.0.1:13374"
 
-	leaderRotation := leaderrotation.NewFixed(hotstuff.ID(1))
+	// leaderRotation := leaderrotation.NewFixed(hotstuff.ID(1))
 
-	pm := synchronizer.New(leaderRotation, time.Duration(50)*time.Second)
+	// pm := synchronizer.New(leaderRotation, time.Duration(50)*time.Second)
 	var cfg *server.Config
 
 	srv = server.Server{
-		ID:        serverID,
-		Addr:      addr[int(serverID)],
-		Pm:        pm,
+		ID:   serverID,
+		Addr: addr[int(serverID)],
+		// Pm:        pm,
 		Cfg:       cfg,
 		PubKey:    pubKey[serverID],
 		Cert:      cert[serverID],
@@ -204,9 +204,9 @@ func main() {
 	srv.Cfg = server.NewConfig(*replicaConfig)
 
 	// Round robin
-	// leaderrotation := leaderrotation.NewRoundRobin(srv.Cfg)
-	// pm := synchronizer.New(leaderrotation, time.Duration(50)*time.Second)
-	// srv.Pm = pm
+	leaderrotation := leaderrotation.NewRoundRobin(srv.Cfg)
+	pm := synchronizer.New(leaderrotation, time.Duration(50)*time.Second)
+	srv.Pm = pm
 
 	hs := consensus.Builder{
 		Config:       srv.Cfg,
@@ -230,7 +230,7 @@ func main() {
 			for _, peer := range peerMap {
 				peer.Close()
 			}
-			srv.Pm.Start()
+			// srv.Pm.Start()
 		}
 		if srv.ID == srv.Pm.GetLeader(hs.Leaf().GetView()+1) {
 			// fmt.Println("I am Leader")
@@ -629,10 +629,27 @@ create:
 			d.OnMessage(func(msg webrtc.DataChannelMessage) {
 				// fmt.Printf("Message from DataChannel '%s': '%s'\n", d.Label(), string(msg.Data))
 				// err := d.SendText("Message Received")
-				recvLock.Lock()
-				recvBytes = append(recvBytes, msg.Data)
-				recvLock.Unlock()
-				recieved <- msg.Data
+				// if strings.TrimSpace(string(msg.Data)) == "StartConnectionLeader" {
+				// go ConnectionLeader()
+				// fmt.Println("Starting connection leader")
+				if msg.IsString {
+					if strings.TrimSpace(string(msg.Data)) == "StartConnectionLeader" {
+						go ConnectionLeader()
+					} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
+						if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()) {
+							srv.Pm.Start()
+							srv.Pm.Proposal <- srv.Hs.Propose()
+							srv.Pm.PropDone = false
+						} else {
+							srv.Pm.Start()
+						}
+					}
+				} else {
+					recvLock.Lock()
+					recvBytes = append(recvBytes, msg.Data)
+					recvLock.Unlock()
+					recieved <- msg.Data
+				}
 				// if err != nil {
 				// 	fmt.Println(err)
 				// }
@@ -787,10 +804,27 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 	// Register text message handling
 	dataChannel.OnMessage(func(msg webrtc.DataChannelMessage) {
 		// fmt.Printf("Message from DataChannel '%s': '%s'\n", dataChannel.Label(), string(msg.Data))
-		recvLock.Lock()
-		recvBytes = append(recvBytes, msg.Data)
-		recvLock.Unlock()
-		recieved <- msg.Data
+		// if strings.TrimSpace(string(msg.Data)) == "StartConnectionLeader" {
+		// go ConnectionLeader()
+		// fmt.Println("Starting connection leader")
+		if msg.IsString {
+			if strings.TrimSpace(string(msg.Data)) == "StartConnectionLeader" {
+				go ConnectionLeader()
+			} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
+				if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()) {
+					srv.Pm.Start()
+					srv.Pm.Proposal <- srv.Hs.Propose()
+					srv.Pm.PropDone = false
+				} else {
+					srv.Pm.Start()
+				}
+			}
+		} else {
+			recvLock.Lock()
+			recvBytes = append(recvBytes, msg.Data)
+			recvLock.Unlock()
+			recieved <- msg.Data
+		}
 	})
 
 	// Create an offer to send to the browser
@@ -1012,13 +1046,14 @@ func purgeWebRTCDatabase() {
 func EstablishConnections() {
 
 	started := false
+	serverConID := 1
 	// leader := false
 
 	if srv.ID == hotstuff.ID(1) {
 		for {
 			if len(peerMap) == 3 {
 				time.Sleep(time.Second * 20)
-				continue
+				break
 			}
 
 			dc, peerID := ConnectToPeer()
@@ -1032,9 +1067,11 @@ func EstablishConnections() {
 
 			peerMap[peerIDHot] = dc
 			if len(peerMap) == 3 && !started {
+				peerMap[hotstuff.ID(2)].SendText("StartConnectionLeader")
 				purgeWebRTCDatabase()
-				srv.Pm.Proposal <- srv.Hs.Propose()
-				srv.Pm.PropDone = false
+				// srv.Pm.Start()
+				// srv.Pm.Proposal <- srv.Hs.Propose()
+				// srv.Pm.PropDone = false
 				started = true
 			}
 		}
@@ -1047,37 +1084,17 @@ func EstablishConnections() {
 					continue
 				}
 
-				leaderIDUint, _ := strconv.ParseUint(leaderID, 10, 32)
-				leaderIDHot := hotstuff.ID(leaderIDUint)
+				// leaderIDUint, _ := strconv.ParseUint(leaderID, 10, 32)
+				// leaderIDHot := hotstuff.ID(leaderIDUint)
 
-				peerMap[leaderIDHot] = dc
-				srv.Pm.Start()
-			} else if len(peerMap) > 0 {
-				if len(peerMap) == 3 {
-					time.Sleep(time.Second * 20)
-					continue
-				}
-
-				dc, peerID := ConnectToPeer()
-				if peerID == "error" || peerID == "empty" {
-					time.Sleep(time.Second * 5)
-					continue
-				}
-
-				peerIDUint, _ := strconv.ParseUint(peerID, 10, 32)
-				peerIDHot := hotstuff.ID(peerIDUint)
-
-				peerMap[peerIDHot] = dc
-				if len(peerMap) == 3 && !started {
-					purgeWebRTCDatabase()
-					srv.Pm.Proposal <- srv.Hs.Propose()
-					srv.Pm.PropDone = false
-					started = true
-				}
+				peerMap[hotstuff.ID(serverConID)] = dc
+				// srv.Pm.Start()
+				break
 			}
 			time.Sleep(time.Second * 5)
 		}
 	} else if srv.ID == hotstuff.ID(3) {
+
 		for {
 			if len(peerMap) < 2 {
 				dc, leaderID := ConnectToLeader()
@@ -1086,33 +1103,14 @@ func EstablishConnections() {
 					continue
 				}
 
-				leaderIDUint, _ := strconv.ParseUint(leaderID, 10, 32)
-				leaderIDHot := hotstuff.ID(leaderIDUint)
+				// leaderIDUint, _ := strconv.ParseUint(leaderID, 10, 32)
+				// leaderIDHot := hotstuff.ID(leaderIDUint)
 
-				peerMap[leaderIDHot] = dc
-				srv.Pm.Start()
-			} else if len(peerMap) > 1 {
-				if len(peerMap) == 3 {
-					time.Sleep(time.Second * 20)
-					continue
-				}
-
-				dc, peerID := ConnectToPeer()
-				if peerID == "error" || peerID == "empty" {
-					time.Sleep(time.Second * 5)
-					continue
-				}
-
-				peerIDUint, _ := strconv.ParseUint(peerID, 10, 32)
-				peerIDHot := hotstuff.ID(peerIDUint)
-
-				peerMap[peerIDHot] = dc
-				if len(peerMap) == 3 && !started {
-					purgeWebRTCDatabase()
-					srv.Pm.Proposal <- srv.Hs.Propose()
-					srv.Pm.PropDone = false
-					started = true
-				}
+				peerMap[hotstuff.ID(serverConID)] = dc
+				serverConID++
+				// srv.Pm.Start()
+			} else {
+				break
 			}
 			time.Sleep(time.Second * 5)
 		}
@@ -1125,16 +1123,17 @@ func EstablishConnections() {
 					continue
 				}
 
-				leaderIDUint, _ := strconv.ParseUint(leaderID, 10, 32)
-				leaderIDHot := hotstuff.ID(leaderIDUint)
+				// leaderIDUint, _ := strconv.ParseUint(leaderID, 10, 32)
+				// leaderIDHot := hotstuff.ID(leaderIDUint)
 
-				peerMap[leaderIDHot] = dc
-
+				peerMap[hotstuff.ID(serverConID)] = dc
+				serverConID++
+				// srv.Pm.Start()
 				if len(peerMap) == 3 && !started {
+					SendStringTo("StartWasmStuff", hotstuff.ID(0))
 					purgeWebRTCDatabase()
-					srv.Pm.Proposal <- srv.Hs.Propose()
-					srv.Pm.PropDone = false
 					started = true
+					break
 				}
 			}
 			time.Sleep(time.Second * 5)
@@ -1189,6 +1188,34 @@ func EstablishConnections() {
 
 }
 
+func ConnectionLeader() {
+	for {
+		if len(peerMap) == 3 {
+			// time.Sleep(time.Second * 20)
+			break
+		}
+
+		dc, peerID := ConnectToPeer()
+		if peerID == "error" || peerID == "empty" {
+			time.Sleep(time.Second * 5)
+			continue
+		}
+
+		peerIDUint, _ := strconv.ParseUint(peerID, 10, 32)
+		peerIDHot := hotstuff.ID(peerIDUint)
+
+		peerMap[peerIDHot] = dc
+		if len(peerMap) == 3 {
+			if srv.ID == hotstuff.ID(2) {
+				peerMap[hotstuff.ID(3)].SendText("StartConnectionLeader")
+			}
+			purgeWebRTCDatabase()
+			srv.Pm.Start()
+			break
+		}
+	}
+}
+
 // mapkeyDataChannel finds the key for a specific datachannel in the peermap
 func mapkeyDataChannel(m map[hotstuff.ID]*webrtc.DataChannel, value *webrtc.DataChannel) (key hotstuff.ID, ok bool) {
 	for k, v := range m {
@@ -1202,8 +1229,36 @@ func mapkeyDataChannel(m map[hotstuff.ID]*webrtc.DataChannel, value *webrtc.Data
 }
 
 func SendCommand(cmd []byte) error {
-	for _, peer := range peerMap {
-		err := peer.Send(cmd)
+	if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()) {
+		for _, peer := range peerMap {
+			err := peer.Send(cmd)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		fmt.Print("Sending to ")
+		fmt.Println(srv.Pm.GetLeader(srv.Hs.Leaf().GetView() + 1))
+		fmt.Println(peerMap)
+		err := peerMap[srv.Pm.GetLeader(srv.Hs.Leaf().GetView()+1)].Send(cmd)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func SendStringTo(cmd string, srvID hotstuff.ID) error {
+	if srvID == hotstuff.ID(0) {
+		for _, peer := range peerMap {
+			err := peer.SendText(cmd)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		err := peerMap[srvID].SendText(cmd)
 		if err != nil {
 			return err
 		}
