@@ -225,19 +225,20 @@ func main() {
 	go EstablishConnections()
 	// restart:
 	for {
-		if srv.Pm.GetLeader(hs.Leaf().GetView()) != srv.Pm.GetLeader(hs.Leaf().GetView()+1) {
-			purgeWebRTCDatabase()
-			for _, peer := range peerMap {
-				peer.Close()
-			}
-			// srv.Pm.Start()
-		}
-		if srv.ID == srv.Pm.GetLeader(hs.Leaf().GetView()+1) {
-			// fmt.Println("I am Leader")
+		// if srv.Pm.GetLeader(hs.Leaf().GetView()) != srv.Pm.GetLeader(hs.Leaf().GetView()+1) {
+		// 	purgeWebRTCDatabase()
+		// 	for _, peer := range peerMap {
+		// 		peer.Close()
+		// 	}
+		// 	// srv.Pm.Start()
+		// }
+		if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
+			fmt.Println("I am Leader")
 			// time.Sleep(time.Millisecond * 20)
 			// fmt.Println("Waiting for reply from replicas or for new proposal to be made...")
 			select {
 			case msgByte := <-srv.Pm.Proposal:
+				fmt.Println("Proposal")
 				if msgByte == nil {
 					continue
 				}
@@ -269,7 +270,7 @@ func main() {
 				// fmt.Println("Bytes sent...")
 				srv.Pm.PropDone = true
 			case <-recieved:
-				// fmt.Println("Recieved byte...")
+				fmt.Println("Recieved byte...")
 				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
 				recvLock.Unlock()
@@ -330,18 +331,18 @@ func main() {
 				SendCommand([]byte(msgString))
 				sendLock.Unlock()
 			}
-			// if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == 50 {
-			// 	srv.Pm.Stop()
-			// 	fmt.Println("Pacemaker stopped...")
-			// 	return
-			// }
+			if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == 50 {
+				srv.Pm.Stop()
+				fmt.Println("Pacemaker stopped...")
+				return
+			}
 		} else {
-			// fmt.Println("I am normal replica")
+			fmt.Println("I am normal replica")
 			// time.Sleep(time.Millisecond * 50)
 			// fmt.Println("Waiting for proposal from leader...")
 			select {
 			case <-recieved:
-				// fmt.Println("Recieved byte from leader...")
+				fmt.Println("Recieved byte from leader...")
 				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
 				recvLock.Unlock()
@@ -407,11 +408,11 @@ func main() {
 				// sendBytes = append(sendBytes, []byte(cmdString))
 				SendCommand([]byte(cmdString))
 			}
-			// if srv.Hs.BlockChain().Len() == 50 {
-			// 	srv.Pm.Stop()
-			// 	fmt.Println("Pacemaker stopped...")
-			// 	return
-			// }
+			if srv.Hs.BlockChain().Len() == 50 {
+				srv.Pm.Stop()
+				fmt.Println("Pacemaker stopped...")
+				return
+			}
 			// if srv.Hs.BlockChain().Len()%50 == 0 {
 			// 	srv.Pm.Stop()
 			// 	fmt.Println("Pacemaker stopped...")
@@ -1229,7 +1230,7 @@ func mapkeyDataChannel(m map[hotstuff.ID]*webrtc.DataChannel, value *webrtc.Data
 }
 
 func SendCommand(cmd []byte) error {
-	if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()) {
+	if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()) {
 		for _, peer := range peerMap {
 			err := peer.Send(cmd)
 			if err != nil {
@@ -1238,11 +1239,19 @@ func SendCommand(cmd []byte) error {
 		}
 	} else {
 		fmt.Print("Sending to ")
-		fmt.Println(srv.Pm.GetLeader(srv.Hs.Leaf().GetView() + 1))
+		fmt.Println(srv.Pm.GetLeader(srv.Hs.LastVote() + 1))
 		fmt.Println(peerMap)
-		err := peerMap[srv.Pm.GetLeader(srv.Hs.Leaf().GetView()+1)].Send(cmd)
-		if err != nil {
-			return err
+		if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
+			recvLock.Lock()
+			recvBytes = append(recvBytes, cmd)
+			recvLock.Unlock()
+			recieved <- cmd
+
+		} else {
+			err := peerMap[srv.Pm.GetLeader(srv.Hs.LastVote()+1)].Send(cmd)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
