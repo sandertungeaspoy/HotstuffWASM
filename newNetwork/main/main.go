@@ -48,7 +48,7 @@ func main() {
 	registerCallbacks()
 
 	peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
-
+	CreateHTMLDocument()
 	serverID = hotstuff.ID(0)
 	for {
 		if serverID != 0 {
@@ -1369,6 +1369,46 @@ func StartAgain(this js.Value, args []js.Value) interface{} {
 	starter <- struct{}{}
 	// fmt.Println("After")
 	return nil
+}
+
+func AppendCmd(document js.Value, cmd string) {
+
+	div := js.Global().Get("document").Call("getElementById", "cmdList")
+
+	text := document.Call("createElement", "p")
+
+	text.Set("innerText", cmd)
+
+	div.Call("appendChild", text)
+
+	document.Get("body").Call("appendChild", div)
+}
+
+func CreateCommandList(document js.Value) js.Value {
+
+	div := document.Call("createElement", "div")
+
+	div.Call("setAttribute", "style", "overflow:scroll; height:500px; width:500px; float:right; margin-right:150px")
+	div.Call("setAttribute", "id", "cmdList")
+
+	text := document.Call("createElement", "p")
+
+	text.Set("innerText", "Paragraph Test from WASM")
+
+	div.Call("appendChild", text)
+
+	document.Get("body").Call("appendChild", div)
+
+	return document
+}
+
+func CreateHTMLDocument() js.Value {
+
+	document := js.Global().Get("document")
+
+	CreateCommandList(document)
+
+	return document
 }
 
 func registerCallbacks() {
