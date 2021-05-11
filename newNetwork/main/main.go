@@ -225,20 +225,17 @@ func main() {
 	go EstablishConnections()
 	// restart:
 	for {
-		// if srv.Pm.GetLeader(hs.Leaf().GetView()) != srv.Pm.GetLeader(hs.Leaf().GetView()+1) {
-		// 	purgeWebRTCDatabase()
-		// 	for _, peer := range peerMap {
-		// 		peer.Close()
-		// 	}
-		// 	// srv.Pm.Start()
-		// }
+		if srv.Pm.GetLeader(hs.LastVote()) != srv.Pm.GetLeader(hs.LastVote()+1) {
+			if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
+				fmt.Println("I am Leader")
+			} else {
+				fmt.Println("I am Normal Replica")
+			}
+		}
 		if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
-			fmt.Println("I am Leader")
-			// time.Sleep(time.Millisecond * 20)
-			// fmt.Println("Waiting for reply from replicas or for new proposal to be made...")
 			select {
 			case msgByte := <-srv.Pm.Proposal:
-				fmt.Println("Proposal")
+				// fmt.Println("Proposal")
 				if msgByte == nil {
 					continue
 				}
@@ -270,7 +267,7 @@ func main() {
 				// fmt.Println("Bytes sent...")
 				srv.Pm.PropDone = true
 			case <-recieved:
-				fmt.Println("Recieved byte...")
+				// fmt.Println("Recieved byte...")
 				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
 				recvLock.Unlock()
@@ -337,12 +334,12 @@ func main() {
 				return
 			}
 		} else {
-			fmt.Println("I am normal replica")
+			// fmt.Println("I am normal replica")
 			// time.Sleep(time.Millisecond * 50)
 			// fmt.Println("Waiting for proposal from leader...")
 			select {
 			case <-recieved:
-				fmt.Println("Recieved byte from leader...")
+				// fmt.Println("Recieved byte from leader...")
 				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
 				recvLock.Unlock()
@@ -637,7 +634,7 @@ create:
 					if strings.TrimSpace(string(msg.Data)) == "StartConnectionLeader" {
 						go ConnectionLeader()
 					} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
-						if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()) {
+						if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 							srv.Pm.Start()
 							srv.Pm.Proposal <- srv.Hs.Propose()
 							srv.Pm.PropDone = false
@@ -812,7 +809,7 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 			if strings.TrimSpace(string(msg.Data)) == "StartConnectionLeader" {
 				go ConnectionLeader()
 			} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
-				if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()) {
+				if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 					srv.Pm.Start()
 					srv.Pm.Proposal <- srv.Hs.Propose()
 					srv.Pm.PropDone = false
@@ -1353,7 +1350,7 @@ func GetCommand(this js.Value, i []js.Value) interface{} {
 
 	cmd := string(value1)
 	cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
-	if serverID == srv.Pm.GetLeader(srv.Hs.Leaf().View+1) {
+	if serverID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 		cmdLock.Lock()
 		command := hotstuff.Command(cmd)
 		srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
