@@ -334,12 +334,8 @@ func main() {
 				return
 			}
 		} else {
-			// fmt.Println("I am normal replica")
-			// time.Sleep(time.Millisecond * 50)
-			// fmt.Println("Waiting for proposal from leader...")
 			select {
 			case <-recieved:
-				// fmt.Println("Recieved byte from leader...")
 				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
 				recvLock.Unlock()
