@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall/js"
 
 	hotstuff "github.com/HotstuffWASM/newNetwork"
 	"github.com/HotstuffWASM/newNetwork/config"
@@ -152,7 +151,7 @@ func (srv *Server) Deliver(_ context.Context, block *hotstuff.Block) {
 func (srv *Server) Exec(cmd hotstuff.Command) {
 	fmt.Print("Command executed: ")
 	fmt.Println(cmd)
-	AppendCmd(string(cmd))
+	// AppendCmd(string(cmd))
 	// if cmd == srv.Cmds.Cmds[0] {
 	// 	srv.Cmds.Cmds = srv.Cmds.Cmds[1:]
 	// }
@@ -203,19 +202,19 @@ func (cmdBuf *CmdBuffer) GetCommand() *hotstuff.Command {
 	return nil
 }
 
-func AppendCmd(cmd string) {
+// func AppendCmd(cmd string) {
 
-	document := js.Global().Get("document")
+// 	document := js.Global().Get("document")
 
-	div := document.Call("getElementById", "cmdList")
+// 	div := document.Call("getElementById", "cmdList")
 
-	// divChild := document.Call("getElementById", "cmdList").Get("childNodes[0]")
+// 	// divChild := document.Call("getElementById", "cmdList").Get("childNodes[0]")
 
-	text := document.Call("createElement", "p")
+// 	text := document.Call("createElement", "p")
 
-	text.Set("innerText", cmd)
+// 	text.Set("innerText", cmd)
 
-	div.Call("insertBefore", text, div.Get("firstElementChild"))
+// 	div.Call("insertBefore", text, div.Get("firstElementChild"))
 
-	// document.Get("body").Call("appendChild", div)
-}
+// 	// document.Get("body").Call("appendChild", div)
+// }

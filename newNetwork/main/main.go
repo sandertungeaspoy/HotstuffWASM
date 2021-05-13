@@ -10,10 +10,12 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall/js"
+
+	// "syscall/js"
 
 	// "syscall/js"
 	"time"
@@ -45,11 +47,15 @@ var peerMap map[hotstuff.ID]*webrtc.DataChannel
 var starter chan struct{}
 
 func main() {
-	registerCallbacks()
+	// registerCallbacks()
 
 	peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
-	CreateHTMLDocument()
-	serverID = hotstuff.ID(0)
+	// CreateHTMLDocument()
+	idString := os.Args[1]
+	idUint, _ := strconv.ParseUint(idString, 10, 32)
+	serverID = hotstuff.ID(idUint)
+
+	// serverID = hotstuff.ID(0)
 	for {
 		if serverID != 0 {
 			break
@@ -790,7 +796,17 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 	dataChannel.OnClose(func() {
 		fmt.Printf("Data channel '%s'-'%d' has been closed\n", dataChannel.Label(), dataChannel.ID())
 
-		peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
+		peerKey, ok := mapkeyDataChannel(peerMap, dataChannel)
+
+		fmt.Println(dataChannel.ID())
+		fmt.Println(peerKey)
+
+		if ok {
+			delete(peerMap, peerKey)
+			id := strconv.FormatUint(uint64(peerKey), 10)
+			removeAnswer(id)
+		}
+
 		purgeWebRTCDatabase()
 
 	})
@@ -1125,6 +1141,7 @@ func EstablishConnections() {
 				// srv.Pm.Start()
 				if len(peerMap) == 3 && !started {
 					SendStringTo("StartWasmStuff", hotstuff.ID(0))
+					srv.Pm.Start()
 					purgeWebRTCDatabase()
 					started = true
 					break
@@ -1234,6 +1251,7 @@ func SendCommand(cmd []byte) error {
 		fmt.Print("Sending to ")
 		fmt.Println(srv.Pm.GetLeader(srv.Hs.LastVote() + 1))
 		fmt.Println(peerMap)
+
 		if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 			recvLock.Lock()
 			recvBytes = append(recvBytes, cmd)
@@ -1241,10 +1259,15 @@ func SendCommand(cmd []byte) error {
 			recieved <- cmd
 
 		} else {
-			err := peerMap[srv.Pm.GetLeader(srv.Hs.LastVote()+1)].Send(cmd)
-			if err != nil {
-				return err
+
+			conn, ok := peerMap[srv.Pm.GetLeader(srv.Hs.LastVote()+1)]
+			if ok {
+				err := conn.Send(cmd)
+				if err != nil {
+					return err
+				}
 			}
+
 		}
 	}
 
@@ -1260,158 +1283,162 @@ func SendStringTo(cmd string, srvID hotstuff.ID) error {
 			}
 		}
 	} else {
-		err := peerMap[srvID].SendText(cmd)
-		if err != nil {
-			return err
+		conn, ok := peerMap[srvID]
+		if ok {
+			err := conn.SendText(cmd)
+			if err != nil {
+				return err
+			}
 		}
+
 	}
 	return nil
 }
 
 // GetSelfID gets the ID of the server
-func GetSelfID(this js.Value, i []js.Value) interface{} {
-	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
+// func GetSelfID(this js.Value, i []js.Value) interface{} {
+// 	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
 
-	selfID, _ := strconv.ParseUint(value1, 10, 32)
-	serverID = hotstuff.ID(selfID)
-	fmt.Println(serverID)
-	return nil
-}
+// 	selfID, _ := strconv.ParseUint(value1, 10, 32)
+// 	serverID = hotstuff.ID(selfID)
+// 	fmt.Println(serverID)
+// 	return nil
+// }
 
-// PassUint8ArrayToGo passes array
-func PassUint8ArrayToGo(this js.Value, args []js.Value) interface{} {
-	recv := make([]byte, args[0].Get("length").Int())
+// // PassUint8ArrayToGo passes array
+// func PassUint8ArrayToGo(this js.Value, args []js.Value) interface{} {
+// 	recv := make([]byte, args[0].Get("length").Int())
 
-	_ = js.CopyBytesToGo(recv, args[0])
+// 	_ = js.CopyBytesToGo(recv, args[0])
 
-	recvLock.Lock()
-	recvBytes = append(recvBytes, recv)
-	recvLock.Unlock()
-	recieved <- recv
+// 	recvLock.Lock()
+// 	recvBytes = append(recvBytes, recv)
+// 	recvLock.Unlock()
+// 	recieved <- recv
 
-	return nil
-}
+// 	return nil
+// }
 
-// SetUint8ArrayInGo sets array
-func SetUint8ArrayInGo(this js.Value, args []js.Value) interface{} {
-	sendLock.Lock()
-	if len(sendBytes) == 0 {
-		sendLock.Unlock()
-		return nil
-	}
+// // SetUint8ArrayInGo sets array
+// func SetUint8ArrayInGo(this js.Value, args []js.Value) interface{} {
+// 	sendLock.Lock()
+// 	if len(sendBytes) == 0 {
+// 		sendLock.Unlock()
+// 		return nil
+// 	}
 
-	if args[0].Get("length").Int() == 0 {
-		sendLock.Unlock()
-		return nil
-	}
+// 	if args[0].Get("length").Int() == 0 {
+// 		sendLock.Unlock()
+// 		return nil
+// 	}
 
-	var msg []byte
-	if len(sendBytes) > 1 {
-		msg, sendBytes = sendBytes[0], sendBytes[1:]
-	} else {
-		msg, sendBytes = sendBytes[0], make([][]byte, 0)
-	}
-	sendLock.Unlock()
-	if msg == nil {
-		return nil
-	}
-	// fmt.Println("Sending bytes to JS")
-	_ = js.CopyBytesToJS(args[0], msg)
+// 	var msg []byte
+// 	if len(sendBytes) > 1 {
+// 		msg, sendBytes = sendBytes[0], sendBytes[1:]
+// 	} else {
+// 		msg, sendBytes = sendBytes[0], make([][]byte, 0)
+// 	}
+// 	sendLock.Unlock()
+// 	if msg == nil {
+// 		return nil
+// 	}
+// 	// fmt.Println("Sending bytes to JS")
+// 	_ = js.CopyBytesToJS(args[0], msg)
 
-	return nil
-}
+// 	return nil
+// }
 
-// GetArraySize gets the array size
-func GetArraySize(this js.Value, args []js.Value) interface{} {
+// // GetArraySize gets the array size
+// func GetArraySize(this js.Value, args []js.Value) interface{} {
 
-	if len(sendBytes) == 0 {
-		_ = js.CopyBytesToJS(args[1], []byte{0})
-		return nil
-	}
-	size := make([]byte, 10)
+// 	if len(sendBytes) == 0 {
+// 		_ = js.CopyBytesToJS(args[1], []byte{0})
+// 		return nil
+// 	}
+// 	size := make([]byte, 10)
 
-	msgSize := []byte(strconv.Itoa(len(sendBytes[0])))
+// 	msgSize := []byte(strconv.Itoa(len(sendBytes[0])))
 
-	copy(size, msgSize)
+// 	copy(size, msgSize)
 
-	_ = js.CopyBytesToJS(args[0], size)
-	_ = js.CopyBytesToJS(args[1], []byte{1})
+// 	_ = js.CopyBytesToJS(args[0], size)
+// 	_ = js.CopyBytesToJS(args[1], []byte{1})
 
-	return nil
-}
+// 	return nil
+// }
 
-// GetCommand gets the ID of the server
-func GetCommand(this js.Value, i []js.Value) interface{} {
-	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
+// // GetCommand gets the ID of the server
+// func GetCommand(this js.Value, i []js.Value) interface{} {
+// 	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
 
-	cmd := string(value1)
-	cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
-	if serverID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
-		cmdLock.Lock()
-		command := hotstuff.Command(cmd)
-		srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
-		cmdLock.Unlock()
-		srv.Pm.Proposal <- srv.Hs.Propose()
-	} else {
-		incomingCmd <- cmd
-	}
-	return nil
-}
-func StartAgain(this js.Value, args []js.Value) interface{} {
-	// fmt.Println("Before")
-	starter <- struct{}{}
-	// fmt.Println("After")
-	return nil
-}
+// 	cmd := string(value1)
+// 	cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
+// 	if serverID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
+// 		cmdLock.Lock()
+// 		command := hotstuff.Command(cmd)
+// 		srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
+// 		cmdLock.Unlock()
+// 		srv.Pm.Proposal <- srv.Hs.Propose()
+// 	} else {
+// 		incomingCmd <- cmd
+// 	}
+// 	return nil
+// }
+// func StartAgain(this js.Value, args []js.Value) interface{} {
+// 	// fmt.Println("Before")
+// 	starter <- struct{}{}
+// 	// fmt.Println("After")
+// 	return nil
+// }
 
-func AppendCmd(document js.Value, cmd string) {
+// func AppendCmd(document js.Value, cmd string) {
 
-	div := js.Global().Get("document").Call("getElementById", "cmdList")
+// 	div := js.Global().Get("document").Call("getElementById", "cmdList")
 
-	text := document.Call("createElement", "p")
+// 	text := document.Call("createElement", "p")
 
-	text.Set("innerText", cmd)
+// 	text.Set("innerText", cmd)
 
-	div.Call("appendChild", text)
+// 	div.Call("appendChild", text)
 
-	document.Get("body").Call("appendChild", div)
-}
+// 	document.Get("body").Call("appendChild", div)
+// }
 
-func CreateCommandList(document js.Value) js.Value {
+// func CreateCommandList(document js.Value) js.Value {
 
-	div := document.Call("createElement", "div")
+// 	div := document.Call("createElement", "div")
 
-	div.Call("setAttribute", "style", "overflow:scroll; height:500px; width:500px; float:right; margin-right:150px")
-	div.Call("setAttribute", "id", "cmdList")
+// 	div.Call("setAttribute", "style", "overflow:scroll; height:500px; width:500px; float:right; margin-right:150px")
+// 	div.Call("setAttribute", "id", "cmdList")
 
-	text := document.Call("createElement", "p")
+// 	text := document.Call("createElement", "p")
 
-	text.Set("innerText", "Paragraph Test from WASM")
+// 	text.Set("innerText", "Paragraph Test from WASM")
 
-	div.Call("appendChild", text)
+// 	div.Call("appendChild", text)
 
-	document.Get("body").Call("appendChild", div)
+// 	document.Get("body").Call("appendChild", div)
 
-	return document
-}
+// 	return document
+// }
 
-func CreateHTMLDocument() js.Value {
+// func CreateHTMLDocument() js.Value {
 
-	document := js.Global().Get("document")
+// 	document := js.Global().Get("document")
 
-	CreateCommandList(document)
+// 	CreateCommandList(document)
 
-	return document
-}
+// 	return document
+// }
 
-func registerCallbacks() {
-	js.Global().Set("GetSelfID", js.FuncOf(GetSelfID))
-	js.Global().Set("GetCommand", js.FuncOf(GetCommand))
-	js.Global().Set("PassUint8ArrayToGo", js.FuncOf(PassUint8ArrayToGo))
-	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
-	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))
-	js.Global().Set("StartAgain", js.FuncOf(StartAgain))
-}
+// func registerCallbacks() {
+// 	js.Global().Set("GetSelfID", js.FuncOf(GetSelfID))
+// 	js.Global().Set("GetCommand", js.FuncOf(GetCommand))
+// 	js.Global().Set("PassUint8ArrayToGo", js.FuncOf(PassUint8ArrayToGo))
+// 	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
+// 	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))
+// 	js.Global().Set("StartAgain", js.FuncOf(StartAgain))
+// }
 
 // defer elapsed("GetSelfID")()
 func elapsed(what string) func() {
