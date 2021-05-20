@@ -330,11 +330,11 @@ func main() {
 				SendCommand([]byte(msgString))
 				sendLock.Unlock()
 			}
-			if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == 50 {
-				srv.Pm.Stop()
-				fmt.Println("Pacemaker stopped...")
-				return
-			}
+			// if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == 50 {
+			// 	srv.Pm.Stop()
+			// 	fmt.Println("Pacemaker stopped...")
+			// 	return
+			// }
 		} else {
 			select {
 			case <-recieved:
@@ -403,11 +403,11 @@ func main() {
 				// sendBytes = append(sendBytes, []byte(cmdString))
 				SendCommand([]byte(cmdString))
 			}
-			if srv.Hs.BlockChain().Len() == 50 {
-				srv.Pm.Stop()
-				fmt.Println("Pacemaker stopped...")
-				return
-			}
+			// if srv.Hs.BlockChain().Len() == 50 {
+			// 	srv.Pm.Stop()
+			// 	fmt.Println("Pacemaker stopped...")
+			// 	return
+			// }
 			// if srv.Hs.BlockChain().Len()%50 == 0 {
 			// 	srv.Pm.Stop()
 			// 	fmt.Println("Pacemaker stopped...")
@@ -792,7 +792,13 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 	dataChannel.OnClose(func() {
 		fmt.Printf("Data channel '%s'-'%d' has been closed\n", dataChannel.Label(), dataChannel.ID())
 
-		peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
+		peerKey, ok := mapkeyDataChannel(peerMap, dataChannel)
+
+		if ok {
+			delete(peerMap, peerKey)
+			id := strconv.FormatUint(uint64(peerKey), 10)
+			removeAnswer(id)
+		}
 		purgeWebRTCDatabase()
 
 	})
@@ -1243,10 +1249,14 @@ func SendCommand(cmd []byte) error {
 			recieved <- cmd
 
 		} else {
-			err := peerMap[srv.Pm.GetLeader(srv.Hs.LastVote()+1)].Send(cmd)
-			if err != nil {
-				return err
+			conn, ok := peerMap[srv.Pm.GetLeader(srv.Hs.LastVote()+1)]
+			if ok {
+				err := conn.Send(cmd)
+				if err != nil {
+					return err
+				}
 			}
+
 		}
 	}
 
