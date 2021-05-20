@@ -27,7 +27,7 @@ type wasmServer struct {
 }
 
 var (
-	listen = flag.String("listen", "localhost:8080", "listen address")
+	listen = flag.String("listen", "152.94.80.97:8080", "listen address")
 	dir    = flag.String("dir", ".", "directory to serve")
 )
 
