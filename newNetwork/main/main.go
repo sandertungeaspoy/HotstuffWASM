@@ -49,6 +49,8 @@ func main() {
 
 	peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
 	CreateHTMLDocument()
+	CreateChessBoard("white")
+	// CreateChart()
 	serverID = hotstuff.ID(0)
 	for {
 		if serverID != 0 {
@@ -1399,9 +1401,140 @@ func CreateHTMLDocument() js.Value {
 
 	document := js.Global().Get("document")
 
-	CreateCommandList(document)
+	voteBtn := document.Call("createElement", "button")
+	voteBtn.Call("setAttribute", "onClick", "CreateVote();")
+	voteBtn.Set("innerText", "Create Vote")
 
+	script := document.Call("createElement", "script")
+	// script.Call("setAttribute", "src", "https://canvasjs.com/assets/script/canvasjs.min.js")
+	document.Get("body").Call("appendChild", script)
+	document.Get("body").Call("appendChild", voteBtn)
+	CreateCommandList(document)
+	// document.Get("chart").Call("render()")
 	return document
+}
+
+func CreateChart(this js.Value, args []js.Value) interface{} {
+	document := js.Global().Get("document")
+	voteName := document.Call("getElementById", "VoteName").Get("value").String()
+	voteAlts := document.Call("getElementById", "VoteAlts").Get("value").String()
+
+	CreateChartGo(voteName, voteAlts)
+	return nil
+}
+
+func CreateChartGo(voteName string, voteAlts string) {
+	document := js.Global().Get("document")
+
+	div := document.Call("createElement", "div")
+	div.Call("setAttribute", "id", "chartContainer")
+	scriptfunc := document.Call("createElement", "script")
+	scriptfunc.Set("innerText", "var chart = new CanvasJS.Chart(\"chartContainer\", {animationEnabled: true, theme: \"light2\", title:{	text: \"Top Oil Reserves\"},axisY: {title: \"Reserves(MMbbl)\"},data: [{ type: \"column\", showInLegend: true, legendMarkerColor: \"grey\",	legendText: \"MMbbl = one million barrels\",dataPoints: [ { y: 300878, label: \"Venezuela\" },{ y: 266455,  label: \"Saudi\" },{ y: 169709,  label: \"Canada\" },	{ y: 158400,  label: \"Iran\" },{ y: 142503,  label: \"Iraq\" },{ y: 101500, label: \"Kuwait\" },{ y: 97800,  label: \"UAE\" },{ y: 80000,  label: \"Russia\" }]}]});chart.render();")
+
+	div.Call("appendChild", scriptfunc)
+
+	// chart := document.Call("createElement", "CanvasJS.Chart(\"chartContainer\", {animationEnabled: true, theme: \"light2\", title:{	text: \"Top Oil Reserves\"},axisY: {title: \"Reserves(MMbbl)\"},data: [{ type: \"column\", showInLegend: true, legendMarkerColor: \"grey\",	legendText: \"MMbbl = one million barrels\",dataPoints: [ { y: 300878, label: \"Venezuela\" },{ y: 266455,  label: \"Saudi\" },{ y: 169709,  label: \"Canada\" },	{ y: 158400,  label: \"Iran\" },{ y: 142503,  label: \"Iraq\" },{ y: 101500, label: \"Kuwait\" },{ y: 97800,  label: \"UAE\" },{ y: 80000,  label: \"Russia\" }]}]}")
+
+	// div.Call("appendChild", c)
+
+	document.Get("body").Call("appendChild", div)
+}
+
+func CreateVote(this js.Value, args []js.Value) interface{} {
+	document := js.Global().Get("document")
+	div := document.Call("createElement", "div")
+	div.Call("setAttribute", "id", "VoteDiv")
+	textbox := document.Call("createElement", "input")
+	textbox.Call("setAttribute", "type", "text")
+	textbox.Call("setAttribute", "id", "VoteName")
+
+	textboxAlts := document.Call("createElement", "input")
+	textboxAlts.Call("setAttribute", "type", "text")
+	textboxAlts.Call("setAttribute", "id", "VoteAlts")
+
+	CreatVoteBtn := document.Call("createElement", "button")
+	CreatVoteBtn.Set("innerText", "Generate Vote")
+	CreatVoteBtn.Call("setAttribute", "id", "voteGen")
+	CreatVoteBtn.Call("setAttribute", "onClick", "CreateChart")
+
+	div.Call("appendChild", textbox)
+	div.Call("appendChild", textboxAlts)
+	div.Call("appendChild", CreatVoteBtn)
+
+	document.Get("body").Call("appendChild", div)
+
+	return nil
+}
+
+func CreateChessGame(this js.Value, args []js.Value) interface{} {
+	document := js.Global().Get("document")
+	div := document.Call("createElement", "div")
+	div.Call("setAttribute", "id", "ChessDiv")
+	textbox := document.Call("createElement", "input")
+	textbox.Call("setAttribute", "type", "text")
+	textbox.Call("setAttribute", "id", "ChessVS")
+	lbl := document.Call("createElement", "label")
+	lbl.Call("setAttribute", "for", "ChessVS")
+	lbl.Set("innerText", "Player to invite: ")
+
+	CreatVoteBtn := document.Call("createElement", "button")
+	CreatVoteBtn.Set("innerText", "Invite to Chess")
+	CreatVoteBtn.Call("setAttribute", "id", "ChessGen")
+	CreatVoteBtn.Call("setAttribute", "onClick", "CreateChess")
+
+	div.Call("appendChild", textbox)
+	div.Call("appendChild", CreatVoteBtn)
+
+	document.Get("body").Call("appendChild", div)
+
+	return nil
+}
+
+func CreateChessBoard(color string) {
+	document := js.Global().Get("document")
+	div := document.Call("createElement", "div")
+	div.Call("setAttribute", "id", "myBoard")
+	div.Call("setAttribute", "style", "width: 400px; float:left")
+	document.Get("body").Call("appendChild", div)
+
+	fen := document.Call("createElement", "div")
+	fen.Call("setAttribute", "id", "fen")
+	fen.Call("setAttribute", "style", "float:left")
+	document.Get("body").Call("appendChild", fen)
+
+	status := document.Call("createElement", "div")
+	status.Call("setAttribute", "id", "status")
+	status.Call("setAttribute", "style", "float:left")
+	document.Get("body").Call("appendChild", status)
+
+	pgn := document.Call("createElement", "div")
+	pgn.Call("setAttribute", "id", "pgn")
+	pgn.Call("setAttribute", "style", "float:left")
+	document.Get("body").Call("appendChild", pgn)
+
+	role := document.Call("createElement", "script")
+	roleString := ("var role = \"" + color + "\"")
+	role.Set("innerText", roleString)
+
+	chess := document.Call("createElement", "script")
+	// chess.Call("setAttribute", "id", "chess")
+	chess.Set("innerText", "var board = null; var game = new Chess();var $status = $('#status');var $fen = $('#fen');var $pgn = $('#pgn'); function onDragStart (source, piece, position, orientation) { if (game.game_over()) return false; if ((game.turn() === 'w' && piece.search(/^b/) !== -1) || (game.turn() === 'b' && piece.search(/^w/) !== -1)) {return false}}; function onDrop (source, target) { var move = game.move({ from: source, to: target, promotion: 'q'}); game.undo();  if (move === null) return 'snapback'; document.getElementById(\"command\").value = \"chess:\" + source + \"-\" + target; }; function updateStatus () {var status = '';var moveColor = 'White';if (game.turn() === 'b') {moveColor = 'Black'		};if (game.in_checkmate()) { status = 'Game over, ' + moveColor + ' is in checkmate.'}	else if (game.in_draw()) {		  status = 'Game over, drawn position'} else {		  status = moveColor + ' to move'; if (game.in_check()) {			status += ', ' + moveColor + ' is in check'		  }		};		$status.html(status);		$fen.html(game.fen());		$pgn.html(game.pgn());   board.position(game.fen())	  }; function onSnapEnd () {board.position(game.fen())}; var config = {draggable: true,position: 'start',onDragStart: onDragStart,onDrop: onDrop, onSnapEnd: onSnapEnd};	  board = Chessboard('myBoard', config);	  updateStatus()")
+	document.Get("body").Call("appendChild", chess)
+	document.Get("body").Call("appendChild", role)
+}
+
+func CreateChess(this js.Value, args []js.Value) interface{} {
+	document := js.Global().Get("document")
+	vsID := document.Call("getElementById", "Chess").Get("value").String()
+	chessVS, err := strconv.Atoi(vsID)
+	if err != nil {
+		return nil
+	}
+
+	SendStringTo("startChessWhite", hotstuff.ID(chessVS))
+
+	CreateChessBoard("black")
+	return nil
 }
 
 func registerCallbacks() {
@@ -1411,6 +1544,9 @@ func registerCallbacks() {
 	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
 	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))
 	js.Global().Set("StartAgain", js.FuncOf(StartAgain))
+	js.Global().Set("CreateVote", js.FuncOf(CreateVote))
+	js.Global().Set("CreateChart", js.FuncOf(CreateChart))
+	js.Global().Set("CreateChess", js.FuncOf(CreateChess))
 }
 
 // defer elapsed("GetSelfID")()

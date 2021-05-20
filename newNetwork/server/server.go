@@ -152,6 +152,9 @@ func (srv *Server) Deliver(_ context.Context, block *hotstuff.Block) {
 func (srv *Server) Exec(cmd hotstuff.Command) {
 	fmt.Print("Command executed: ")
 	fmt.Println(cmd)
+	if strings.Contains(string(cmd), "chess:") {
+		execChess(cmd)
+	}
 	AppendCmd(string(cmd))
 	// if cmd == srv.Cmds.Cmds[0] {
 	// 	srv.Cmds.Cmds = srv.Cmds.Cmds[1:]
@@ -189,6 +192,15 @@ func (cmdBuf *CmdBuffer) Accept(cmd hotstuff.Command) bool {
 	// cmdBuf.Cmds = append(cmdBuf.Cmds, cmd)
 	cmdBuf.serialNumbers[id] = serial
 	return true
+}
+
+func execChess(cmd hotstuff.Command) {
+	move := strings.Split(string(cmd), "chess:")
+	moveCmd := strings.TrimSpace(move[1])
+	console := js.Global().Get("console")
+
+	console.Call("game.move", moveCmd)
+
 }
 
 // GetCommand returns the front command from the commandbuffer
