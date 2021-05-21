@@ -44,7 +44,8 @@ var peerMap map[hotstuff.ID]*webrtc.DataChannel
 
 var starter chan struct{}
 
-var blocks50 func()
+var start time.Time
+var blocks int
 
 func main() {
 	registerCallbacks()
@@ -327,12 +328,16 @@ func main() {
 				SendCommand([]byte(msgString))
 				sendLock.Unlock()
 			}
-			if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == 50 {
+			if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
+				fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
+			}
+			if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == blocks {
 				srv.Pm.Stop()
-				blocks50()
+				fmt.Printf("%v blocks took %v\n", blocks, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
 				return
 			}
+
 		} else {
 			select {
 			case <-recieved:
@@ -401,17 +406,16 @@ func main() {
 				// sendBytes = append(sendBytes, []byte(cmdString))
 				SendCommand([]byte(cmdString))
 			}
-			if srv.Hs.BlockChain().Len() == 50 {
+			if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
+				fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
+			}
+			if srv.Hs.BlockChain().Len() == blocks {
 				srv.Pm.Stop()
-				blocks50()
+				fmt.Printf("%v blocks took %v\n", blocks, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
 				return
 			}
-			// if srv.Hs.BlockChain().Len()%50 == 0 {
-			// 	srv.Pm.Stop()
-			// 	fmt.Println("Pacemaker stopped...")
-			// 	break
-			// }
+
 		}
 	}
 	// fmt.Println("Waiting to restart")
@@ -633,12 +637,12 @@ create:
 					} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
 						if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 							srv.Pm.Start()
-							blocks50 = elapsed("50 Blocks")
+							start = time.Now()
 							srv.Pm.Proposal <- srv.Hs.Propose()
 							srv.Pm.PropDone = false
 						} else {
 							srv.Pm.Start()
-							blocks50 = elapsed("50 Blocks")
+							start = time.Now()
 						}
 					}
 				} else {
@@ -816,12 +820,12 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 			} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
 				if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 					srv.Pm.Start()
-					blocks50 = elapsed("50 Blocks")
+					start = time.Now()
 					srv.Pm.Proposal <- srv.Hs.Propose()
 					srv.Pm.PropDone = false
 				} else {
 					srv.Pm.Start()
-					blocks50 = elapsed("50 Blocks")
+					start = time.Now()
 				}
 			}
 		} else {
@@ -1133,9 +1137,11 @@ func EstablishConnections() {
 
 				peerMap[hotstuff.ID(serverConID)] = dc
 				serverConID++
-				// srv.Pm.Start()
+
 				if len(peerMap) == 3 && !started {
 					SendStringTo("StartWasmStuff", hotstuff.ID(0))
+					srv.Pm.Start()
+					start = time.Now()
 					purgeWebRTCDatabase()
 					started = true
 					break
@@ -1216,7 +1222,7 @@ func ConnectionLeader() {
 			}
 			purgeWebRTCDatabase()
 			srv.Pm.Start()
-			blocks50 = elapsed("50 Blocks")
+			start = time.Now()
 			break
 		}
 	}
@@ -1291,6 +1297,15 @@ func GetSelfID(this js.Value, i []js.Value) interface{} {
 	selfID, _ := strconv.ParseUint(value1, 10, 32)
 	serverID = hotstuff.ID(selfID)
 	fmt.Println(serverID)
+	return nil
+}
+
+// GetBlockNumber gets the amount of blocks to run for
+func GetBlockNumber(this js.Value, i []js.Value) interface{} {
+	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
+
+	blocks, _ = strconv.Atoi(value1)
+	fmt.Println(blocks)
 	return nil
 }
 
@@ -1532,7 +1547,37 @@ func CreateChessBoard(color string) {
 
 	chess := document.Call("createElement", "script")
 	// chess.Call("setAttribute", "id", "chess")
-	chess.Set("innerText", "var board = null; var game = new Chess();var $status = $('#status');var $fen = $('#fen');var $pgn = $('#pgn'); function onDragStart (source, piece, position, orientation) { if (game.game_over()) return false; if ((game.turn() === 'w' && piece.search(/^b/) !== -1) || (game.turn() === 'b' && piece.search(/^w/) !== -1)) {return false}}; function onDrop (source, target) { var move = game.move({ from: source, to: target, promotion: 'q'}); game.undo();  if (move === null) return 'snapback'; document.getElementById(\"command\").value = \"chess:\" + source + \"-\" + target; }; function updateStatus () {var status = '';var moveColor = 'White';if (game.turn() === 'b') {moveColor = 'Black'		};if (game.in_checkmate()) { status = 'Game over, ' + moveColor + ' is in checkmate.'}	else if (game.in_draw()) {		  status = 'Game over, drawn position'} else {		  status = moveColor + ' to move'; if (game.in_check()) {			status += ', ' + moveColor + ' is in check'		  }		};		$status.html(status);		$fen.html(game.fen());		$pgn.html(game.pgn());   board.position(game.fen())	  }; function onSnapEnd () {board.position(game.fen())}; var config = {draggable: true,position: 'start',onDragStart: onDragStart,onDrop: onDrop, onSnapEnd: onSnapEnd};	  board = Chessboard('myBoard', config);	  updateStatus()")
+	chess.Set("innerText", "var board = null; var game = new Chess();"+
+		"var $status = $('#status');"+
+		"var $fen = $('#fen');"+
+		"var $pgn = $('#pgn'); "+
+		"function onDragStart (source, piece, position, orientation) {"+
+		" if (game.game_over()) return false;"+
+		" if ((game.turn() === 'w' && piece.search(/^b/) !== -1) || (game.turn() === 'b' && piece.search(/^w/) !== -1)) {return false}};"+
+		" function onDrop (source, target) { "+
+		"var move = game.move({ from: source, to: target, promotion: 'q'});"+
+		" game.undo(); "+
+		" if (move === null) return 'snapback';"+
+		" document.getElementById(\"command\").value = \"chess:\" + source + \"fromTo\" + target; };"+
+		" function updateStatus () {"+
+		"var status = '';"+
+		"var moveColor = 'White';"+
+		"if (game.turn() === 'b') {moveColor = 'Black'};"+
+		"if (game.in_checkmate()) { "+
+		"status = 'Game over, ' + moveColor + ' is in checkmate.'}"+
+		"	else if (game.in_draw()) {"+
+		"status = 'Game over, drawn position'} "+
+		"else {status = moveColor + ' to move';"+
+		" if (game.in_check()) {"+
+		"status += ', ' + moveColor + ' is in check'		  }		};"+
+		"$status.html(status);"+
+		"$fen.html(game.fen());"+
+		"$pgn.html(game.pgn());"+
+		"board.position(game.fen())	  }; "+
+		"function onSnapEnd () {board.position(game.fen())};"+
+		" var config = {draggable: true,position: 'start',onDragStart: onDragStart,onDrop: onDrop, onSnapEnd: onSnapEnd};"+
+		"board = Chessboard('myBoard', config);	  "+
+		"updateStatus()")
 	document.Get("body").Call("appendChild", chess)
 	document.Get("body").Call("appendChild", role)
 }
@@ -1553,6 +1598,7 @@ func CreateChess(this js.Value, args []js.Value) interface{} {
 
 func registerCallbacks() {
 	js.Global().Set("GetSelfID", js.FuncOf(GetSelfID))
+	js.Global().Set("GetBlockNumber", js.FuncOf(GetBlockNumber))
 	js.Global().Set("GetCommand", js.FuncOf(GetCommand))
 	js.Global().Set("PassUint8ArrayToGo", js.FuncOf(PassUint8ArrayToGo))
 	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
