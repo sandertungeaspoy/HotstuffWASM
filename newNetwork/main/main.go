@@ -44,6 +44,8 @@ var peerMap map[hotstuff.ID]*webrtc.DataChannel
 
 var starter chan struct{}
 
+var blocks50 func()
+
 func main() {
 	registerCallbacks()
 
@@ -315,11 +317,6 @@ func main() {
 				}
 				recvLock.Unlock()
 				srv.Hs.OnVote(pc)
-				// if srv.Hs.BlockChain().Len()%50 == 0 {
-				// 	srv.Pm.Stop()
-				// 	fmt.Println("Pacemaker stopped...")
-				// 	break
-				// }
 			case <-srv.Pm.NewView:
 				msg := srv.Hs.NewView()
 				srv.Hs.OnNewView(msg)
@@ -330,11 +327,12 @@ func main() {
 				SendCommand([]byte(msgString))
 				sendLock.Unlock()
 			}
-			// if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == 50 {
-			// 	srv.Pm.Stop()
-			// 	fmt.Println("Pacemaker stopped...")
-			// 	return
-			// }
+			if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == 50 {
+				srv.Pm.Stop()
+				blocks50()
+				fmt.Println("Pacemaker stopped...")
+				return
+			}
 		} else {
 			select {
 			case <-recieved:
@@ -403,11 +401,12 @@ func main() {
 				// sendBytes = append(sendBytes, []byte(cmdString))
 				SendCommand([]byte(cmdString))
 			}
-			// if srv.Hs.BlockChain().Len() == 50 {
-			// 	srv.Pm.Stop()
-			// 	fmt.Println("Pacemaker stopped...")
-			// 	return
-			// }
+			if srv.Hs.BlockChain().Len() == 50 {
+				srv.Pm.Stop()
+				blocks50()
+				fmt.Println("Pacemaker stopped...")
+				return
+			}
 			// if srv.Hs.BlockChain().Len()%50 == 0 {
 			// 	srv.Pm.Stop()
 			// 	fmt.Println("Pacemaker stopped...")
@@ -634,10 +633,12 @@ create:
 					} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
 						if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 							srv.Pm.Start()
+							blocks50 = elapsed("50 Blocks")
 							srv.Pm.Proposal <- srv.Hs.Propose()
 							srv.Pm.PropDone = false
 						} else {
 							srv.Pm.Start()
+							blocks50 = elapsed("50 Blocks")
 						}
 					}
 				} else {
@@ -815,10 +816,12 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 			} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
 				if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 					srv.Pm.Start()
+					blocks50 = elapsed("50 Blocks")
 					srv.Pm.Proposal <- srv.Hs.Propose()
 					srv.Pm.PropDone = false
 				} else {
 					srv.Pm.Start()
+					blocks50 = elapsed("50 Blocks")
 				}
 			}
 		} else {
@@ -1213,6 +1216,7 @@ func ConnectionLeader() {
 			}
 			purgeWebRTCDatabase()
 			srv.Pm.Start()
+			blocks50 = elapsed("50 Blocks")
 			break
 		}
 	}
