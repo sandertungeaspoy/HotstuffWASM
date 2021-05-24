@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall/js"
 
 	hotstuff "github.com/HotstuffWASM/newNetwork"
 	"github.com/HotstuffWASM/newNetwork/config"
@@ -151,6 +152,10 @@ func (srv *Server) Deliver(_ context.Context, block *hotstuff.Block) {
 func (srv *Server) Exec(cmd hotstuff.Command) {
 	fmt.Print("Command executed: ")
 	fmt.Println(cmd)
+	if strings.Contains(string(cmd), "chess:") {
+		execChess(cmd)
+	}
+	AppendCmd(string(cmd))
 	// if cmd == srv.Cmds.Cmds[0] {
 	// 	srv.Cmds.Cmds = srv.Cmds.Cmds[1:]
 	// }
@@ -189,6 +194,15 @@ func (cmdBuf *CmdBuffer) Accept(cmd hotstuff.Command) bool {
 	return true
 }
 
+func execChess(cmd hotstuff.Command) {
+	move := strings.Split(string(cmd), "chess:")
+	moveCmd := strings.TrimSpace(move[1])
+	steps := strings.Split(moveCmd, "fromTo")
+	console := js.Global().Get("console")
+	chessCmd := "{from: '" + steps[0] + "', to: '" + steps[1] + "', promotion: 'q'}"
+	console.Call("game.move", chessCmd)
+}
+
 // GetCommand returns the front command from the commandbuffer
 func (cmdBuf *CmdBuffer) GetCommand() *hotstuff.Command {
 	if len(cmdBuf.Cmds) != 0 {
@@ -199,4 +213,21 @@ func (cmdBuf *CmdBuffer) GetCommand() *hotstuff.Command {
 		return &cmd
 	}
 	return nil
+}
+
+func AppendCmd(cmd string) {
+
+	document := js.Global().Get("document")
+
+	div := document.Call("getElementById", "cmdList")
+
+	// divChild := document.Call("getElementById", "cmdList").Get("childNodes[0]")
+
+	text := document.Call("createElement", "p")
+
+	text.Set("innerText", cmd)
+
+	div.Call("insertBefore", text, div.Get("firstElementChild"))
+
+	// document.Get("body").Call("appendChild", div)
 }

@@ -44,11 +44,16 @@ var peerMap map[hotstuff.ID]*webrtc.DataChannel
 
 var starter chan struct{}
 
+var start time.Time
+var blocks int
+
 func main() {
 	registerCallbacks()
 
 	peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
-
+	CreateHTMLDocument()
+	CreateChessBoard("white")
+	// CreateChart()
 	serverID = hotstuff.ID(0)
 	for {
 		if serverID != 0 {
@@ -225,20 +230,16 @@ func main() {
 	go EstablishConnections()
 	// restart:
 	for {
-		// if srv.Pm.GetLeader(hs.Leaf().GetView()) != srv.Pm.GetLeader(hs.Leaf().GetView()+1) {
-		// 	purgeWebRTCDatabase()
-		// 	for _, peer := range peerMap {
-		// 		peer.Close()
-		// 	}
-		// 	// srv.Pm.Start()
-		// }
+		if srv.Pm.GetLeader(hs.LastVote()) != srv.Pm.GetLeader(hs.LastVote()+1) {
+			if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
+				fmt.Println("I am Leader")
+			} else {
+				fmt.Println("I am Normal Replica")
+			}
+		}
 		if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
-			fmt.Println("I am Leader")
-			// time.Sleep(time.Millisecond * 20)
-			// fmt.Println("Waiting for reply from replicas or for new proposal to be made...")
 			select {
 			case msgByte := <-srv.Pm.Proposal:
-				fmt.Println("Proposal")
 				if msgByte == nil {
 					continue
 				}
@@ -247,13 +248,7 @@ func main() {
 				if senderID != srv.ID && cmd != "Propose" {
 					continue
 				}
-				// fmt.Println("Formating string to block...")
 				block := StringToBlock(obj)
-				// fmt.Print("Formated block: ")
-				// fmt.Println(block)
-
-				// fmt.Println("OnPropose...")
-				// fmt.Print(block.Parent)
 				pcString, err := srv.Hs.OnPropose(block)
 				if err != nil {
 					fmt.Println(err)
@@ -261,21 +256,16 @@ func main() {
 				}
 				srv.Hs.Finish(block)
 				pc := StringToPartialCert(pcString)
-				// fmt.Println("OnVote...")
 				srv.Hs.OnVote(pc)
-				// fmt.Println("Sending byte...")
 				sendLock.Lock()
 				SendCommand(blockString)
 				sendLock.Unlock()
-				// fmt.Println("Bytes sent...")
 				srv.Pm.PropDone = true
 			case <-recieved:
-				fmt.Println("Recieved byte...")
 				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
 				recvLock.Unlock()
 				if newView[0] == "NewView" {
-					// fmt.Println("Recieved timeout from replica")
 					recvLock.Lock()
 					msg := StringToNewView(string(recvBytes[0]))
 					recvLock.Unlock()
@@ -287,14 +277,11 @@ func main() {
 						recvBytes = make([][]byte, 0)
 					}
 					recvLock.Unlock()
-					// fmt.Print("RecvBytes: ")
-					// fmt.Println(recvBytes)
 					continue
 				}
 				recvLock.Lock()
 				cmd := strings.Split(string(recvBytes[0]), ":")
 				if cmd[0] == "Command" {
-					// fmt.Println("Recieved command: " + cmd[1])
 					cmdString := cmd[1]
 					if len(recvBytes) > 1 {
 						recvBytes = recvBytes[1:]
@@ -316,11 +303,6 @@ func main() {
 				}
 				recvLock.Unlock()
 				srv.Hs.OnVote(pc)
-				// if srv.Hs.BlockChain().Len()%50 == 0 {
-				// 	srv.Pm.Stop()
-				// 	fmt.Println("Pacemaker stopped...")
-				// 	break
-				// }
 			case <-srv.Pm.NewView:
 				msg := srv.Hs.NewView()
 				srv.Hs.OnNewView(msg)
@@ -331,18 +313,19 @@ func main() {
 				SendCommand([]byte(msgString))
 				sendLock.Unlock()
 			}
-			if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == 50 {
+			if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
+				fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
+			}
+			if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == blocks {
 				srv.Pm.Stop()
+				fmt.Printf("%v blocks took %v\n", blocks, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
 				return
 			}
+
 		} else {
-			fmt.Println("I am normal replica")
-			// time.Sleep(time.Millisecond * 50)
-			// fmt.Println("Waiting for proposal from leader...")
 			select {
 			case <-recieved:
-				fmt.Println("Recieved byte from leader...")
 				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
 				recvLock.Unlock()
@@ -408,16 +391,16 @@ func main() {
 				// sendBytes = append(sendBytes, []byte(cmdString))
 				SendCommand([]byte(cmdString))
 			}
-			if srv.Hs.BlockChain().Len() == 50 {
+			if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
+				fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
+			}
+			if srv.Hs.BlockChain().Len() == blocks {
 				srv.Pm.Stop()
+				fmt.Printf("%v blocks took %v\n", blocks, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
 				return
 			}
-			// if srv.Hs.BlockChain().Len()%50 == 0 {
-			// 	srv.Pm.Stop()
-			// 	fmt.Println("Pacemaker stopped...")
-			// 	break
-			// }
+
 		}
 	}
 	// fmt.Println("Waiting to restart")
@@ -439,10 +422,6 @@ func FormatBytes(msg []byte) (id hotstuff.ID, cmd string, obj string) {
 	if len(msg) != 0 {
 		msgString := string(msg)
 		msgStringByte := strings.Split(msgString, ";")
-		// fmt.Print("FormatBytes string: ")
-		// fmt.Println(msgString)
-		// fmt.Print("Byte of msg: ")
-		// fmt.Println(msgStringByte[1])
 		if len(msgStringByte) == 1 {
 			return hotstuff.ID(0), "", ""
 		}
@@ -522,11 +501,9 @@ func StringToBlock(s string) *hotstuff.Block {
 
 // StringToPartialCert returns a PartialCert from a string
 func StringToPartialCert(s string) hotstuff.PartialCert {
-	// fmt.Println(s)
 	strByte := strings.Split(s, ":")
-
 	signString := strings.Split(strByte[0], "-")
-	// fmt.Println(signString)
+
 	rInt := new(big.Int)
 	rInt.SetString(signString[0], 0)
 	sInt := new(big.Int)
@@ -534,15 +511,12 @@ func StringToPartialCert(s string) hotstuff.PartialCert {
 	signer, _ := strconv.ParseUint(signString[2], 10, 32)
 	sign := *hsecdsa.NewSignature(rInt, sInt, hotstuff.ID(signer))
 
-	// hash, _ := base64.RawStdEncoding.DecodeString(strByte[2])
-	// hash := []byte(strByte[1])
 	hash, _ := hex.DecodeString(strByte[1])
 	var h [32]byte
 	copy(h[:], hash)
 	hash2 := hotstuff.Hash(h)
 	var pc hotstuff.PartialCert = hsecdsa.NewPartialCert(&sign, hash2)
-	// fmt.Print("Pc created: ")
-	// fmt.Println(pc)
+
 	return pc
 }
 
@@ -637,12 +611,14 @@ create:
 					if strings.TrimSpace(string(msg.Data)) == "StartConnectionLeader" {
 						go ConnectionLeader()
 					} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
-						if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()) {
+						if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 							srv.Pm.Start()
+							start = time.Now()
 							srv.Pm.Proposal <- srv.Hs.Propose()
 							srv.Pm.PropDone = false
 						} else {
 							srv.Pm.Start()
+							start = time.Now()
 						}
 					}
 				} else {
@@ -797,7 +773,13 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 	dataChannel.OnClose(func() {
 		fmt.Printf("Data channel '%s'-'%d' has been closed\n", dataChannel.Label(), dataChannel.ID())
 
-		peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
+		peerKey, ok := mapkeyDataChannel(peerMap, dataChannel)
+
+		if ok {
+			delete(peerMap, peerKey)
+			id := strconv.FormatUint(uint64(peerKey), 10)
+			removeAnswer(id)
+		}
 		purgeWebRTCDatabase()
 
 	})
@@ -812,12 +794,14 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 			if strings.TrimSpace(string(msg.Data)) == "StartConnectionLeader" {
 				go ConnectionLeader()
 			} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
-				if srv.ID == srv.Pm.GetLeader(srv.Hs.Leaf().GetView()) {
+				if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 					srv.Pm.Start()
+					start = time.Now()
 					srv.Pm.Proposal <- srv.Hs.Propose()
 					srv.Pm.PropDone = false
 				} else {
 					srv.Pm.Start()
+					start = time.Now()
 				}
 			}
 		} else {
@@ -900,7 +884,7 @@ func DeliverOffer(offer string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
 	if err != nil {
 		return
 	}
@@ -919,7 +903,7 @@ func DeliverAnswer(answer string, senderID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
 	if err != nil {
 		return
 	}
@@ -938,7 +922,7 @@ func ReceiveOffer() (string, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
 	if err != nil {
 		return "error", "Websocket"
 	}
@@ -966,7 +950,7 @@ func ReceiveAnswer() (string, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
 	if err != nil {
 		return "error", "Websocket"
 	}
@@ -995,7 +979,7 @@ func RemoveOffer() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1014,7 +998,7 @@ func removeAnswer(senderID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1031,7 +1015,7 @@ func purgeWebRTCDatabase() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://localhost:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1129,9 +1113,11 @@ func EstablishConnections() {
 
 				peerMap[hotstuff.ID(serverConID)] = dc
 				serverConID++
-				// srv.Pm.Start()
+
 				if len(peerMap) == 3 && !started {
 					SendStringTo("StartWasmStuff", hotstuff.ID(0))
+					srv.Pm.Start()
+					start = time.Now()
 					purgeWebRTCDatabase()
 					started = true
 					break
@@ -1212,6 +1198,7 @@ func ConnectionLeader() {
 			}
 			purgeWebRTCDatabase()
 			srv.Pm.Start()
+			start = time.Now()
 			break
 		}
 	}
@@ -1248,10 +1235,14 @@ func SendCommand(cmd []byte) error {
 			recieved <- cmd
 
 		} else {
-			err := peerMap[srv.Pm.GetLeader(srv.Hs.LastVote()+1)].Send(cmd)
-			if err != nil {
-				return err
+			conn, ok := peerMap[srv.Pm.GetLeader(srv.Hs.LastVote()+1)]
+			if ok {
+				err := conn.Send(cmd)
+				if err != nil {
+					return err
+				}
 			}
+
 		}
 	}
 
@@ -1282,6 +1273,15 @@ func GetSelfID(this js.Value, i []js.Value) interface{} {
 	selfID, _ := strconv.ParseUint(value1, 10, 32)
 	serverID = hotstuff.ID(selfID)
 	fmt.Println(serverID)
+	return nil
+}
+
+// GetBlockNumber gets the amount of blocks to run for
+func GetBlockNumber(this js.Value, i []js.Value) interface{} {
+	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
+
+	blocks, _ = strconv.Atoi(value1)
+	fmt.Println(blocks)
 	return nil
 }
 
@@ -1353,7 +1353,7 @@ func GetCommand(this js.Value, i []js.Value) interface{} {
 
 	cmd := string(value1)
 	cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
-	if serverID == srv.Pm.GetLeader(srv.Hs.Leaf().View+1) {
+	if serverID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 		cmdLock.Lock()
 		command := hotstuff.Command(cmd)
 		srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
@@ -1371,13 +1371,218 @@ func StartAgain(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+func AppendCmd(document js.Value, cmd string) {
+
+	div := js.Global().Get("document").Call("getElementById", "cmdList")
+
+	text := document.Call("createElement", "p")
+
+	text.Set("innerText", cmd)
+
+	div.Call("appendChild", text)
+
+	document.Get("body").Call("appendChild", div)
+}
+
+func CreateCommandList(document js.Value) js.Value {
+
+	div := document.Call("createElement", "div")
+
+	div.Call("setAttribute", "style", "overflow:scroll; height:500px; width:500px; float:right; margin-right:150px")
+	div.Call("setAttribute", "id", "cmdList")
+
+	text := document.Call("createElement", "p")
+
+	text.Set("innerText", "Paragraph Test from WASM")
+
+	div.Call("appendChild", text)
+
+	document.Get("body").Call("appendChild", div)
+
+	return document
+}
+
+func CreateHTMLDocument() js.Value {
+
+	document := js.Global().Get("document")
+
+	voteBtn := document.Call("createElement", "button")
+	voteBtn.Call("setAttribute", "onClick", "CreateVote();")
+	voteBtn.Set("innerText", "Create Vote")
+
+	script := document.Call("createElement", "script")
+	// script.Call("setAttribute", "src", "https://canvasjs.com/assets/script/canvasjs.min.js")
+	document.Get("body").Call("appendChild", script)
+	document.Get("body").Call("appendChild", voteBtn)
+	CreateCommandList(document)
+	// document.Get("chart").Call("render()")
+	return document
+}
+
+func CreateChart(this js.Value, args []js.Value) interface{} {
+	document := js.Global().Get("document")
+	voteName := document.Call("getElementById", "VoteName").Get("value").String()
+	voteAlts := document.Call("getElementById", "VoteAlts").Get("value").String()
+
+	CreateChartGo(voteName, voteAlts)
+	return nil
+}
+
+func CreateChartGo(voteName string, voteAlts string) {
+	document := js.Global().Get("document")
+
+	div := document.Call("createElement", "div")
+	div.Call("setAttribute", "id", "chartContainer")
+	scriptfunc := document.Call("createElement", "script")
+	scriptfunc.Set("innerText", "var chart = new CanvasJS.Chart(\"chartContainer\", {animationEnabled: true, theme: \"light2\", title:{	text: \"Top Oil Reserves\"},axisY: {title: \"Reserves(MMbbl)\"},data: [{ type: \"column\", showInLegend: true, legendMarkerColor: \"grey\",	legendText: \"MMbbl = one million barrels\",dataPoints: [ { y: 300878, label: \"Venezuela\" },{ y: 266455,  label: \"Saudi\" },{ y: 169709,  label: \"Canada\" },	{ y: 158400,  label: \"Iran\" },{ y: 142503,  label: \"Iraq\" },{ y: 101500, label: \"Kuwait\" },{ y: 97800,  label: \"UAE\" },{ y: 80000,  label: \"Russia\" }]}]});chart.render();")
+
+	div.Call("appendChild", scriptfunc)
+
+	// chart := document.Call("createElement", "CanvasJS.Chart(\"chartContainer\", {animationEnabled: true, theme: \"light2\", title:{	text: \"Top Oil Reserves\"},axisY: {title: \"Reserves(MMbbl)\"},data: [{ type: \"column\", showInLegend: true, legendMarkerColor: \"grey\",	legendText: \"MMbbl = one million barrels\",dataPoints: [ { y: 300878, label: \"Venezuela\" },{ y: 266455,  label: \"Saudi\" },{ y: 169709,  label: \"Canada\" },	{ y: 158400,  label: \"Iran\" },{ y: 142503,  label: \"Iraq\" },{ y: 101500, label: \"Kuwait\" },{ y: 97800,  label: \"UAE\" },{ y: 80000,  label: \"Russia\" }]}]}")
+
+	// div.Call("appendChild", c)
+
+	document.Get("body").Call("appendChild", div)
+}
+
+func CreateVote(this js.Value, args []js.Value) interface{} {
+	document := js.Global().Get("document")
+	div := document.Call("createElement", "div")
+	div.Call("setAttribute", "id", "VoteDiv")
+	textbox := document.Call("createElement", "input")
+	textbox.Call("setAttribute", "type", "text")
+	textbox.Call("setAttribute", "id", "VoteName")
+
+	textboxAlts := document.Call("createElement", "input")
+	textboxAlts.Call("setAttribute", "type", "text")
+	textboxAlts.Call("setAttribute", "id", "VoteAlts")
+
+	CreatVoteBtn := document.Call("createElement", "button")
+	CreatVoteBtn.Set("innerText", "Generate Vote")
+	CreatVoteBtn.Call("setAttribute", "id", "voteGen")
+	CreatVoteBtn.Call("setAttribute", "onClick", "CreateChart")
+
+	div.Call("appendChild", textbox)
+	div.Call("appendChild", textboxAlts)
+	div.Call("appendChild", CreatVoteBtn)
+
+	document.Get("body").Call("appendChild", div)
+
+	return nil
+}
+
+func CreateChessGame(this js.Value, args []js.Value) interface{} {
+	document := js.Global().Get("document")
+	div := document.Call("createElement", "div")
+	div.Call("setAttribute", "id", "ChessDiv")
+	textbox := document.Call("createElement", "input")
+	textbox.Call("setAttribute", "type", "text")
+	textbox.Call("setAttribute", "id", "ChessVS")
+	lbl := document.Call("createElement", "label")
+	lbl.Call("setAttribute", "for", "ChessVS")
+	lbl.Set("innerText", "Player to invite: ")
+
+	CreatVoteBtn := document.Call("createElement", "button")
+	CreatVoteBtn.Set("innerText", "Invite to Chess")
+	CreatVoteBtn.Call("setAttribute", "id", "ChessGen")
+	CreatVoteBtn.Call("setAttribute", "onClick", "CreateChess")
+
+	div.Call("appendChild", textbox)
+	div.Call("appendChild", CreatVoteBtn)
+
+	document.Get("body").Call("appendChild", div)
+
+	return nil
+}
+
+func CreateChessBoard(color string) {
+	document := js.Global().Get("document")
+	div := document.Call("createElement", "div")
+	div.Call("setAttribute", "id", "myBoard")
+	div.Call("setAttribute", "style", "width: 400px; float:left")
+	document.Get("body").Call("appendChild", div)
+
+	fen := document.Call("createElement", "div")
+	fen.Call("setAttribute", "id", "fen")
+	fen.Call("setAttribute", "style", "float:left")
+	document.Get("body").Call("appendChild", fen)
+
+	status := document.Call("createElement", "div")
+	status.Call("setAttribute", "id", "status")
+	status.Call("setAttribute", "style", "float:left")
+	document.Get("body").Call("appendChild", status)
+
+	pgn := document.Call("createElement", "div")
+	pgn.Call("setAttribute", "id", "pgn")
+	pgn.Call("setAttribute", "style", "float:left")
+	document.Get("body").Call("appendChild", pgn)
+
+	role := document.Call("createElement", "script")
+	roleString := ("var role = \"" + color + "\"")
+	role.Set("innerText", roleString)
+
+	chess := document.Call("createElement", "script")
+	// chess.Call("setAttribute", "id", "chess")
+	chess.Set("innerText", "var board = null; var game = new Chess();"+
+		"var $status = $('#status');"+
+		"var $fen = $('#fen');"+
+		"var $pgn = $('#pgn'); "+
+		"function onDragStart (source, piece, position, orientation) {"+
+		" if (game.game_over()) return false;"+
+		" if ((game.turn() === 'w' && piece.search(/^b/) !== -1) || (game.turn() === 'b' && piece.search(/^w/) !== -1)) {return false}};"+
+		" function onDrop (source, target) { "+
+		"var move = game.move({ from: source, to: target, promotion: 'q'});"+
+		" game.undo(); "+
+		" if (move === null) return 'snapback';"+
+		" document.getElementById(\"command\").value = \"chess:\" + source + \"fromTo\" + target; };"+
+		" function updateStatus () {"+
+		"var status = '';"+
+		"var moveColor = 'White';"+
+		"if (game.turn() === 'b') {moveColor = 'Black'};"+
+		"if (game.in_checkmate()) { "+
+		"status = 'Game over, ' + moveColor + ' is in checkmate.'}"+
+		"	else if (game.in_draw()) {"+
+		"status = 'Game over, drawn position'} "+
+		"else {status = moveColor + ' to move';"+
+		" if (game.in_check()) {"+
+		"status += ', ' + moveColor + ' is in check'		  }		};"+
+		"$status.html(status);"+
+		"$fen.html(game.fen());"+
+		"$pgn.html(game.pgn());"+
+		"board.position(game.fen())	  }; "+
+		"function onSnapEnd () {board.position(game.fen())};"+
+		" var config = {draggable: true,position: 'start',onDragStart: onDragStart,onDrop: onDrop, onSnapEnd: onSnapEnd};"+
+		"board = Chessboard('myBoard', config);	  "+
+		"updateStatus()")
+	document.Get("body").Call("appendChild", chess)
+	document.Get("body").Call("appendChild", role)
+}
+
+func CreateChess(this js.Value, args []js.Value) interface{} {
+	document := js.Global().Get("document")
+	vsID := document.Call("getElementById", "Chess").Get("value").String()
+	chessVS, err := strconv.Atoi(vsID)
+	if err != nil {
+		return nil
+	}
+
+	SendStringTo("startChessWhite", hotstuff.ID(chessVS))
+
+	CreateChessBoard("black")
+	return nil
+}
+
 func registerCallbacks() {
 	js.Global().Set("GetSelfID", js.FuncOf(GetSelfID))
+	js.Global().Set("GetBlockNumber", js.FuncOf(GetBlockNumber))
 	js.Global().Set("GetCommand", js.FuncOf(GetCommand))
 	js.Global().Set("PassUint8ArrayToGo", js.FuncOf(PassUint8ArrayToGo))
 	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
 	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))
 	js.Global().Set("StartAgain", js.FuncOf(StartAgain))
+	js.Global().Set("CreateVote", js.FuncOf(CreateVote))
+	js.Global().Set("CreateChart", js.FuncOf(CreateChart))
+	js.Global().Set("CreateChess", js.FuncOf(CreateChess))
 }
 
 // defer elapsed("GetSelfID")()

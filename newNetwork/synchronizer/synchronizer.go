@@ -99,18 +99,17 @@ func (s *Synchronizer) beat() {
 		s.mut.Unlock()
 		// logger.Debug("Can't beat more than once per view ", s.lastBeat)
 		fmt.Println("Can't beat more than once per view: ", s.lastBeat)
-		// fmt.Println(view)
 		return
 	}
 	if s.GetLeader(view+1) != s.hs.Config().ID() {
 		s.mut.Unlock()
 		return
 	}
-	fmt.Println("Propose again...")
 	s.lastBeat = view
 	s.mut.Unlock()
 	go func() {
 		s.PropDone = false
+		fmt.Println("Proposing")
 		s.Proposal <- s.hs.Propose()
 	}()
 }
@@ -124,15 +123,16 @@ func (s *Synchronizer) newViewTimeout() {
 		case <-s.timer.C:
 			fmt.Println("Timeout")
 			s.hs.CreateDummy()
-			if s.GetLeader(s.hs.Leaf().View) == s.hs.Config().ID() {
-				// go func() {
+			// if s.GetLeader(s.hs.LastVote()+1) == s.hs.Config().ID() {
+			// 	// go func() {
 
-				// }()
-				msg := s.hs.NewView()
-				s.hs.OnNewView(msg)
-			} else {
-				s.NewView <- true
-			}
+			// 	// }()
+			// 	msg := s.hs.NewView()
+			// 	s.hs.OnNewView(msg)
+			// } else {
+			// 	s.NewView <- true
+			// }
+			s.NewView <- true
 			fmt.Println("Resetting timer...")
 			s.mut.Lock()
 			s.timer.Reset(s.timeout)
