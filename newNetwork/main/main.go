@@ -51,10 +51,11 @@ func main() {
 	registerCallbacks()
 
 	peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
-	CreateHTMLDocument()
 	CreateChessBoard("white")
-	// CreateChart()
 	serverID = hotstuff.ID(0)
+	value1 := js.Global().Get("document").Call("getElementById", "self-id").Get("value").String()
+	selfID, _ := strconv.ParseUint(value1, 10, 32)
+	serverID = hotstuff.ID(selfID)
 	for {
 		if serverID != 0 {
 			break
@@ -1393,82 +1394,13 @@ func CreateCommandList(document js.Value) js.Value {
 
 	text := document.Call("createElement", "p")
 
-	text.Set("innerText", "Paragraph Test from WASM")
+	text.Set("innerText", "List of Executed Commands")
 
 	div.Call("appendChild", text)
 
 	document.Get("body").Call("appendChild", div)
 
 	return document
-}
-
-func CreateHTMLDocument() js.Value {
-
-	document := js.Global().Get("document")
-
-	voteBtn := document.Call("createElement", "button")
-	voteBtn.Call("setAttribute", "onClick", "CreateVote();")
-	voteBtn.Set("innerText", "Create Vote")
-
-	script := document.Call("createElement", "script")
-	// script.Call("setAttribute", "src", "https://canvasjs.com/assets/script/canvasjs.min.js")
-	document.Get("body").Call("appendChild", script)
-	document.Get("body").Call("appendChild", voteBtn)
-	CreateCommandList(document)
-	// document.Get("chart").Call("render()")
-	return document
-}
-
-func CreateChart(this js.Value, args []js.Value) interface{} {
-	document := js.Global().Get("document")
-	voteName := document.Call("getElementById", "VoteName").Get("value").String()
-	voteAlts := document.Call("getElementById", "VoteAlts").Get("value").String()
-
-	CreateChartGo(voteName, voteAlts)
-	return nil
-}
-
-func CreateChartGo(voteName string, voteAlts string) {
-	document := js.Global().Get("document")
-
-	div := document.Call("createElement", "div")
-	div.Call("setAttribute", "id", "chartContainer")
-	scriptfunc := document.Call("createElement", "script")
-	scriptfunc.Set("innerText", "var chart = new CanvasJS.Chart(\"chartContainer\", {animationEnabled: true, theme: \"light2\", title:{	text: \"Top Oil Reserves\"},axisY: {title: \"Reserves(MMbbl)\"},data: [{ type: \"column\", showInLegend: true, legendMarkerColor: \"grey\",	legendText: \"MMbbl = one million barrels\",dataPoints: [ { y: 300878, label: \"Venezuela\" },{ y: 266455,  label: \"Saudi\" },{ y: 169709,  label: \"Canada\" },	{ y: 158400,  label: \"Iran\" },{ y: 142503,  label: \"Iraq\" },{ y: 101500, label: \"Kuwait\" },{ y: 97800,  label: \"UAE\" },{ y: 80000,  label: \"Russia\" }]}]});chart.render();")
-
-	div.Call("appendChild", scriptfunc)
-
-	// chart := document.Call("createElement", "CanvasJS.Chart(\"chartContainer\", {animationEnabled: true, theme: \"light2\", title:{	text: \"Top Oil Reserves\"},axisY: {title: \"Reserves(MMbbl)\"},data: [{ type: \"column\", showInLegend: true, legendMarkerColor: \"grey\",	legendText: \"MMbbl = one million barrels\",dataPoints: [ { y: 300878, label: \"Venezuela\" },{ y: 266455,  label: \"Saudi\" },{ y: 169709,  label: \"Canada\" },	{ y: 158400,  label: \"Iran\" },{ y: 142503,  label: \"Iraq\" },{ y: 101500, label: \"Kuwait\" },{ y: 97800,  label: \"UAE\" },{ y: 80000,  label: \"Russia\" }]}]}")
-
-	// div.Call("appendChild", c)
-
-	document.Get("body").Call("appendChild", div)
-}
-
-func CreateVote(this js.Value, args []js.Value) interface{} {
-	document := js.Global().Get("document")
-	div := document.Call("createElement", "div")
-	div.Call("setAttribute", "id", "VoteDiv")
-	textbox := document.Call("createElement", "input")
-	textbox.Call("setAttribute", "type", "text")
-	textbox.Call("setAttribute", "id", "VoteName")
-
-	textboxAlts := document.Call("createElement", "input")
-	textboxAlts.Call("setAttribute", "type", "text")
-	textboxAlts.Call("setAttribute", "id", "VoteAlts")
-
-	CreatVoteBtn := document.Call("createElement", "button")
-	CreatVoteBtn.Set("innerText", "Generate Vote")
-	CreatVoteBtn.Call("setAttribute", "id", "voteGen")
-	CreatVoteBtn.Call("setAttribute", "onClick", "CreateChart")
-
-	div.Call("appendChild", textbox)
-	div.Call("appendChild", textboxAlts)
-	div.Call("appendChild", CreatVoteBtn)
-
-	document.Get("body").Call("appendChild", div)
-
-	return nil
 }
 
 func CreateChessGame(this js.Value, args []js.Value) interface{} {
@@ -1580,8 +1512,6 @@ func registerCallbacks() {
 	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
 	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))
 	js.Global().Set("StartAgain", js.FuncOf(StartAgain))
-	js.Global().Set("CreateVote", js.FuncOf(CreateVote))
-	js.Global().Set("CreateChart", js.FuncOf(CreateChart))
 	js.Global().Set("CreateChess", js.FuncOf(CreateChess))
 }
 
