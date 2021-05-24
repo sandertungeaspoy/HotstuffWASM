@@ -53,8 +53,9 @@
                 
 		<h1>HotStuff WASM Server</h1>
 			Self-ID:<input type="text" id="self-id" name="Server ID" value="1" disabled=true readonly>
+            Block amount:<input type="text" id="blocks" name="blocks" value="1">
 			
-			<button onClick="GetSelfID('self-id'); this.disabled = true;" id="idButton">Assign</button>
+			<button onClick="GetSelfID('self-id'); GetBlockNumber('blocks'); this.disabled = true;" id="idButton">Assign</button>
 
             <button onClick="document.getElementById('self-id').value = 1;" id="id1">Start Srv 1</button>
             <button onClick="document.getElementById('self-id').value = 2;" id="id2">Start Srv 2</button>
@@ -78,12 +79,12 @@
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js" integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.2/chess.js" integrity="sha384-s3XgLpvmHyscVpijnseAmye819Ee3yaGa8NxstkJVyA6nuDFjt59u1QvuEl/mecz" crossorigin="anonymous"></script>
     <script>
-        // intervalClearConsole = window.setInterval(function(){
-        //     console.clear();
-        //   }, 10000);
+        intervalClearConsole = window.setInterval(function(){
+            console.clear();
+          }, 10000);
 
         function restartWebRTCHandler() {
-            var wsRestart = new WebSocket("ws://152.94.80.97:13372");
+            var wsRestart = new WebSocket("ws://127.0.0.1:13372");
             wsRestart.onopen = function() {
                 wsRestart.send("setup:purgeDatabase\n&0%");
                 console.log("Web RTC Handler restarted!");

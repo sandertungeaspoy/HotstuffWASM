@@ -51,11 +51,11 @@ func main() {
 	flag.Parse()
 	log.Printf("listening on %q...", *listen)
 	go func() {
-		err := http.ListenAndServe("152.94.80.97:8080", http.FileServer(http.Dir(*dir)))
+		err := http.ListenAndServe("127.0.0.1:8080", http.FileServer(http.Dir(*dir)))
 		log.Fatalln(err)
 	}()
 
-	l2, err2 := net.Listen("tcp", "152.94.80.97:13372")
+	l2, err2 := net.Listen("tcp", "127.0.0.1:13372")
 	if err2 != nil {
 		fmt.Println(err2)
 	}

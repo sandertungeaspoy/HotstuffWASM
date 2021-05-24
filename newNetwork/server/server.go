@@ -197,10 +197,10 @@ func (cmdBuf *CmdBuffer) Accept(cmd hotstuff.Command) bool {
 func execChess(cmd hotstuff.Command) {
 	move := strings.Split(string(cmd), "chess:")
 	moveCmd := strings.TrimSpace(move[1])
+	steps := strings.Split(moveCmd, "fromTo")
 	console := js.Global().Get("console")
-
-	console.Call("game.move", moveCmd)
-
+	chessCmd := "{from: '" + steps[0] + "', to: '" + steps[1] + "', promotion: 'q'}"
+	console.Call("game.move", chessCmd)
 }
 
 // GetCommand returns the front command from the commandbuffer

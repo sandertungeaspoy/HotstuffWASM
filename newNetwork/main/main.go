@@ -44,6 +44,9 @@ var peerMap map[hotstuff.ID]*webrtc.DataChannel
 
 var starter chan struct{}
 
+var start time.Time
+var blocks int
+
 func main() {
 	registerCallbacks()
 
@@ -237,7 +240,6 @@ func main() {
 		if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
 			select {
 			case msgByte := <-srv.Pm.Proposal:
-				// fmt.Println("Proposal")
 				if msgByte == nil {
 					continue
 				}
@@ -246,13 +248,7 @@ func main() {
 				if senderID != srv.ID && cmd != "Propose" {
 					continue
 				}
-				// fmt.Println("Formating string to block...")
 				block := StringToBlock(obj)
-				// fmt.Print("Formated block: ")
-				// fmt.Println(block)
-
-				// fmt.Println("OnPropose...")
-				// fmt.Print(block.Parent)
 				pcString, err := srv.Hs.OnPropose(block)
 				if err != nil {
 					fmt.Println(err)
@@ -260,21 +256,16 @@ func main() {
 				}
 				srv.Hs.Finish(block)
 				pc := StringToPartialCert(pcString)
-				// fmt.Println("OnVote...")
 				srv.Hs.OnVote(pc)
-				// fmt.Println("Sending byte...")
 				sendLock.Lock()
 				SendCommand(blockString)
 				sendLock.Unlock()
-				// fmt.Println("Bytes sent...")
 				srv.Pm.PropDone = true
 			case <-recieved:
-				// fmt.Println("Recieved byte...")
 				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
 				recvLock.Unlock()
 				if newView[0] == "NewView" {
-					// fmt.Println("Recieved timeout from replica")
 					recvLock.Lock()
 					msg := StringToNewView(string(recvBytes[0]))
 					recvLock.Unlock()
@@ -286,14 +277,11 @@ func main() {
 						recvBytes = make([][]byte, 0)
 					}
 					recvLock.Unlock()
-					// fmt.Print("RecvBytes: ")
-					// fmt.Println(recvBytes)
 					continue
 				}
 				recvLock.Lock()
 				cmd := strings.Split(string(recvBytes[0]), ":")
 				if cmd[0] == "Command" {
-					// fmt.Println("Recieved command: " + cmd[1])
 					cmdString := cmd[1]
 					if len(recvBytes) > 1 {
 						recvBytes = recvBytes[1:]
@@ -315,11 +303,6 @@ func main() {
 				}
 				recvLock.Unlock()
 				srv.Hs.OnVote(pc)
-				// if srv.Hs.BlockChain().Len()%50 == 0 {
-				// 	srv.Pm.Stop()
-				// 	fmt.Println("Pacemaker stopped...")
-				// 	break
-				// }
 			case <-srv.Pm.NewView:
 				msg := srv.Hs.NewView()
 				srv.Hs.OnNewView(msg)
@@ -330,11 +313,16 @@ func main() {
 				SendCommand([]byte(msgString))
 				sendLock.Unlock()
 			}
-			// if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == 50 {
-			// 	srv.Pm.Stop()
-			// 	fmt.Println("Pacemaker stopped...")
-			// 	return
-			// }
+			if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
+				fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
+			}
+			if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == blocks {
+				srv.Pm.Stop()
+				fmt.Printf("%v blocks took %v\n", blocks, time.Since(start))
+				fmt.Println("Pacemaker stopped...")
+				return
+			}
+
 		} else {
 			select {
 			case <-recieved:
@@ -403,16 +391,16 @@ func main() {
 				// sendBytes = append(sendBytes, []byte(cmdString))
 				SendCommand([]byte(cmdString))
 			}
-			// if srv.Hs.BlockChain().Len() == 50 {
-			// 	srv.Pm.Stop()
-			// 	fmt.Println("Pacemaker stopped...")
-			// 	return
-			// }
-			// if srv.Hs.BlockChain().Len()%50 == 0 {
-			// 	srv.Pm.Stop()
-			// 	fmt.Println("Pacemaker stopped...")
-			// 	break
-			// }
+			if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
+				fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
+			}
+			if srv.Hs.BlockChain().Len() == blocks {
+				srv.Pm.Stop()
+				fmt.Printf("%v blocks took %v\n", blocks, time.Since(start))
+				fmt.Println("Pacemaker stopped...")
+				return
+			}
+
 		}
 	}
 	// fmt.Println("Waiting to restart")
@@ -434,10 +422,6 @@ func FormatBytes(msg []byte) (id hotstuff.ID, cmd string, obj string) {
 	if len(msg) != 0 {
 		msgString := string(msg)
 		msgStringByte := strings.Split(msgString, ";")
-		// fmt.Print("FormatBytes string: ")
-		// fmt.Println(msgString)
-		// fmt.Print("Byte of msg: ")
-		// fmt.Println(msgStringByte[1])
 		if len(msgStringByte) == 1 {
 			return hotstuff.ID(0), "", ""
 		}
@@ -517,11 +501,9 @@ func StringToBlock(s string) *hotstuff.Block {
 
 // StringToPartialCert returns a PartialCert from a string
 func StringToPartialCert(s string) hotstuff.PartialCert {
-	// fmt.Println(s)
 	strByte := strings.Split(s, ":")
-
 	signString := strings.Split(strByte[0], "-")
-	// fmt.Println(signString)
+
 	rInt := new(big.Int)
 	rInt.SetString(signString[0], 0)
 	sInt := new(big.Int)
@@ -529,15 +511,12 @@ func StringToPartialCert(s string) hotstuff.PartialCert {
 	signer, _ := strconv.ParseUint(signString[2], 10, 32)
 	sign := *hsecdsa.NewSignature(rInt, sInt, hotstuff.ID(signer))
 
-	// hash, _ := base64.RawStdEncoding.DecodeString(strByte[2])
-	// hash := []byte(strByte[1])
 	hash, _ := hex.DecodeString(strByte[1])
 	var h [32]byte
 	copy(h[:], hash)
 	hash2 := hotstuff.Hash(h)
 	var pc hotstuff.PartialCert = hsecdsa.NewPartialCert(&sign, hash2)
-	// fmt.Print("Pc created: ")
-	// fmt.Println(pc)
+
 	return pc
 }
 
@@ -634,10 +613,12 @@ create:
 					} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
 						if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 							srv.Pm.Start()
+							start = time.Now()
 							srv.Pm.Proposal <- srv.Hs.Propose()
 							srv.Pm.PropDone = false
 						} else {
 							srv.Pm.Start()
+							start = time.Now()
 						}
 					}
 				} else {
@@ -815,10 +796,12 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 			} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
 				if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 					srv.Pm.Start()
+					start = time.Now()
 					srv.Pm.Proposal <- srv.Hs.Propose()
 					srv.Pm.PropDone = false
 				} else {
 					srv.Pm.Start()
+					start = time.Now()
 				}
 			}
 		} else {
@@ -901,7 +884,7 @@ func DeliverOffer(offer string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://152.94.80.97:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
 	if err != nil {
 		return
 	}
@@ -920,7 +903,7 @@ func DeliverAnswer(answer string, senderID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://152.94.80.97:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
 	if err != nil {
 		return
 	}
@@ -939,7 +922,7 @@ func ReceiveOffer() (string, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://152.94.80.97:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
 	if err != nil {
 		return "error", "Websocket"
 	}
@@ -967,7 +950,7 @@ func ReceiveAnswer() (string, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://152.94.80.97:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
 	if err != nil {
 		return "error", "Websocket"
 	}
@@ -996,7 +979,7 @@ func RemoveOffer() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://152.94.80.97:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1015,7 +998,7 @@ func removeAnswer(senderID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://152.94.80.97:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1032,7 +1015,7 @@ func purgeWebRTCDatabase() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://152.94.80.97:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1130,9 +1113,11 @@ func EstablishConnections() {
 
 				peerMap[hotstuff.ID(serverConID)] = dc
 				serverConID++
-				// srv.Pm.Start()
+
 				if len(peerMap) == 3 && !started {
 					SendStringTo("StartWasmStuff", hotstuff.ID(0))
+					srv.Pm.Start()
+					start = time.Now()
 					purgeWebRTCDatabase()
 					started = true
 					break
@@ -1213,6 +1198,7 @@ func ConnectionLeader() {
 			}
 			purgeWebRTCDatabase()
 			srv.Pm.Start()
+			start = time.Now()
 			break
 		}
 	}
@@ -1287,6 +1273,15 @@ func GetSelfID(this js.Value, i []js.Value) interface{} {
 	selfID, _ := strconv.ParseUint(value1, 10, 32)
 	serverID = hotstuff.ID(selfID)
 	fmt.Println(serverID)
+	return nil
+}
+
+// GetBlockNumber gets the amount of blocks to run for
+func GetBlockNumber(this js.Value, i []js.Value) interface{} {
+	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
+
+	blocks, _ = strconv.Atoi(value1)
+	fmt.Println(blocks)
 	return nil
 }
 
@@ -1528,7 +1523,37 @@ func CreateChessBoard(color string) {
 
 	chess := document.Call("createElement", "script")
 	// chess.Call("setAttribute", "id", "chess")
-	chess.Set("innerText", "var board = null; var game = new Chess();var $status = $('#status');var $fen = $('#fen');var $pgn = $('#pgn'); function onDragStart (source, piece, position, orientation) { if (game.game_over()) return false; if ((game.turn() === 'w' && piece.search(/^b/) !== -1) || (game.turn() === 'b' && piece.search(/^w/) !== -1)) {return false}}; function onDrop (source, target) { var move = game.move({ from: source, to: target, promotion: 'q'}); game.undo();  if (move === null) return 'snapback'; document.getElementById(\"command\").value = \"chess:\" + source + \"-\" + target; }; function updateStatus () {var status = '';var moveColor = 'White';if (game.turn() === 'b') {moveColor = 'Black'		};if (game.in_checkmate()) { status = 'Game over, ' + moveColor + ' is in checkmate.'}	else if (game.in_draw()) {		  status = 'Game over, drawn position'} else {		  status = moveColor + ' to move'; if (game.in_check()) {			status += ', ' + moveColor + ' is in check'		  }		};		$status.html(status);		$fen.html(game.fen());		$pgn.html(game.pgn());   board.position(game.fen())	  }; function onSnapEnd () {board.position(game.fen())}; var config = {draggable: true,position: 'start',onDragStart: onDragStart,onDrop: onDrop, onSnapEnd: onSnapEnd};	  board = Chessboard('myBoard', config);	  updateStatus()")
+	chess.Set("innerText", "var board = null; var game = new Chess();"+
+		"var $status = $('#status');"+
+		"var $fen = $('#fen');"+
+		"var $pgn = $('#pgn'); "+
+		"function onDragStart (source, piece, position, orientation) {"+
+		" if (game.game_over()) return false;"+
+		" if ((game.turn() === 'w' && piece.search(/^b/) !== -1) || (game.turn() === 'b' && piece.search(/^w/) !== -1)) {return false}};"+
+		" function onDrop (source, target) { "+
+		"var move = game.move({ from: source, to: target, promotion: 'q'});"+
+		" game.undo(); "+
+		" if (move === null) return 'snapback';"+
+		" document.getElementById(\"command\").value = \"chess:\" + source + \"fromTo\" + target; };"+
+		" function updateStatus () {"+
+		"var status = '';"+
+		"var moveColor = 'White';"+
+		"if (game.turn() === 'b') {moveColor = 'Black'};"+
+		"if (game.in_checkmate()) { "+
+		"status = 'Game over, ' + moveColor + ' is in checkmate.'}"+
+		"	else if (game.in_draw()) {"+
+		"status = 'Game over, drawn position'} "+
+		"else {status = moveColor + ' to move';"+
+		" if (game.in_check()) {"+
+		"status += ', ' + moveColor + ' is in check'		  }		};"+
+		"$status.html(status);"+
+		"$fen.html(game.fen());"+
+		"$pgn.html(game.pgn());"+
+		"board.position(game.fen())	  }; "+
+		"function onSnapEnd () {board.position(game.fen())};"+
+		" var config = {draggable: true,position: 'start',onDragStart: onDragStart,onDrop: onDrop, onSnapEnd: onSnapEnd};"+
+		"board = Chessboard('myBoard', config);	  "+
+		"updateStatus()")
 	document.Get("body").Call("appendChild", chess)
 	document.Get("body").Call("appendChild", role)
 }
@@ -1549,6 +1574,7 @@ func CreateChess(this js.Value, args []js.Value) interface{} {
 
 func registerCallbacks() {
 	js.Global().Set("GetSelfID", js.FuncOf(GetSelfID))
+	js.Global().Set("GetBlockNumber", js.FuncOf(GetBlockNumber))
 	js.Global().Set("GetCommand", js.FuncOf(GetCommand))
 	js.Global().Set("PassUint8ArrayToGo", js.FuncOf(PassUint8ArrayToGo))
 	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
