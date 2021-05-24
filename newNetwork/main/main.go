@@ -240,7 +240,6 @@ func main() {
 		if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
 			select {
 			case msgByte := <-srv.Pm.Proposal:
-				// fmt.Println("Proposal")
 				if msgByte == nil {
 					continue
 				}
@@ -249,13 +248,7 @@ func main() {
 				if senderID != srv.ID && cmd != "Propose" {
 					continue
 				}
-				// fmt.Println("Formating string to block...")
 				block := StringToBlock(obj)
-				// fmt.Print("Formated block: ")
-				// fmt.Println(block)
-
-				// fmt.Println("OnPropose...")
-				// fmt.Print(block.Parent)
 				pcString, err := srv.Hs.OnPropose(block)
 				if err != nil {
 					fmt.Println(err)
@@ -263,21 +256,16 @@ func main() {
 				}
 				srv.Hs.Finish(block)
 				pc := StringToPartialCert(pcString)
-				// fmt.Println("OnVote...")
 				srv.Hs.OnVote(pc)
-				// fmt.Println("Sending byte...")
 				sendLock.Lock()
 				SendCommand(blockString)
 				sendLock.Unlock()
-				// fmt.Println("Bytes sent...")
 				srv.Pm.PropDone = true
 			case <-recieved:
-				// fmt.Println("Recieved byte...")
 				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
 				recvLock.Unlock()
 				if newView[0] == "NewView" {
-					// fmt.Println("Recieved timeout from replica")
 					recvLock.Lock()
 					msg := StringToNewView(string(recvBytes[0]))
 					recvLock.Unlock()
@@ -289,14 +277,11 @@ func main() {
 						recvBytes = make([][]byte, 0)
 					}
 					recvLock.Unlock()
-					// fmt.Print("RecvBytes: ")
-					// fmt.Println(recvBytes)
 					continue
 				}
 				recvLock.Lock()
 				cmd := strings.Split(string(recvBytes[0]), ":")
 				if cmd[0] == "Command" {
-					// fmt.Println("Recieved command: " + cmd[1])
 					cmdString := cmd[1]
 					if len(recvBytes) > 1 {
 						recvBytes = recvBytes[1:]
@@ -437,10 +422,6 @@ func FormatBytes(msg []byte) (id hotstuff.ID, cmd string, obj string) {
 	if len(msg) != 0 {
 		msgString := string(msg)
 		msgStringByte := strings.Split(msgString, ";")
-		// fmt.Print("FormatBytes string: ")
-		// fmt.Println(msgString)
-		// fmt.Print("Byte of msg: ")
-		// fmt.Println(msgStringByte[1])
 		if len(msgStringByte) == 1 {
 			return hotstuff.ID(0), "", ""
 		}
@@ -520,11 +501,9 @@ func StringToBlock(s string) *hotstuff.Block {
 
 // StringToPartialCert returns a PartialCert from a string
 func StringToPartialCert(s string) hotstuff.PartialCert {
-	// fmt.Println(s)
 	strByte := strings.Split(s, ":")
-
 	signString := strings.Split(strByte[0], "-")
-	// fmt.Println(signString)
+
 	rInt := new(big.Int)
 	rInt.SetString(signString[0], 0)
 	sInt := new(big.Int)
@@ -532,15 +511,12 @@ func StringToPartialCert(s string) hotstuff.PartialCert {
 	signer, _ := strconv.ParseUint(signString[2], 10, 32)
 	sign := *hsecdsa.NewSignature(rInt, sInt, hotstuff.ID(signer))
 
-	// hash, _ := base64.RawStdEncoding.DecodeString(strByte[2])
-	// hash := []byte(strByte[1])
 	hash, _ := hex.DecodeString(strByte[1])
 	var h [32]byte
 	copy(h[:], hash)
 	hash2 := hotstuff.Hash(h)
 	var pc hotstuff.PartialCert = hsecdsa.NewPartialCert(&sign, hash2)
-	// fmt.Print("Pc created: ")
-	// fmt.Println(pc)
+
 	return pc
 }
 
