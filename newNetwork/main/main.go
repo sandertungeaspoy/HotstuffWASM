@@ -63,7 +63,10 @@ func main() {
 		fmt.Println(serverID)
 		time.Sleep(1 * time.Second)
 	}
+	blockStr := js.Global().Get("document").Call("getElementById", "blocks").Get("value").String()
 
+	blocks, _ = strconv.Atoi(blockStr)
+	fmt.Println(blocks)
 	CreateCommandList()
 	CreateChessGame()
 
