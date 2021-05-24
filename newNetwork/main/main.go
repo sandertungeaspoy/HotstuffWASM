@@ -51,7 +51,6 @@ func main() {
 	registerCallbacks()
 
 	peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
-	CreateChessBoard("white")
 	serverID = hotstuff.ID(0)
 	value1 := js.Global().Get("document").Call("getElementById", "self-id").Get("value").String()
 	selfID, _ := strconv.ParseUint(value1, 10, 32)
@@ -64,6 +63,9 @@ func main() {
 		fmt.Println(serverID)
 		time.Sleep(1 * time.Second)
 	}
+
+	CreateCommandList()
+	CreateChessGame()
 
 	sendBytes = make([][]byte, 0)
 	recvBytes = make([][]byte, 0)
@@ -621,7 +623,10 @@ create:
 							srv.Pm.Start()
 							start = time.Now()
 						}
+					} else if strings.TrimSpace(string(msg.Data)) == "StartChessWhite" {
+						CreateChessBoard("white")
 					}
+
 				} else {
 					recvLock.Lock()
 					recvBytes = append(recvBytes, msg.Data)
@@ -1385,8 +1390,9 @@ func AppendCmd(document js.Value, cmd string) {
 	document.Get("body").Call("appendChild", div)
 }
 
-func CreateCommandList(document js.Value) js.Value {
+func CreateCommandList() error {
 
+	document := js.Global().Get("document")
 	div := document.Call("createElement", "div")
 
 	div.Call("setAttribute", "style", "overflow:scroll; height:500px; width:500px; float:right; margin-right:150px")
@@ -1400,10 +1406,10 @@ func CreateCommandList(document js.Value) js.Value {
 
 	document.Get("body").Call("appendChild", div)
 
-	return document
+	return nil
 }
 
-func CreateChessGame(this js.Value, args []js.Value) interface{} {
+func CreateChessGame() error {
 	document := js.Global().Get("document")
 	div := document.Call("createElement", "div")
 	div.Call("setAttribute", "id", "ChessDiv")
@@ -1414,13 +1420,13 @@ func CreateChessGame(this js.Value, args []js.Value) interface{} {
 	lbl.Call("setAttribute", "for", "ChessVS")
 	lbl.Set("innerText", "Player to invite: ")
 
-	CreatVoteBtn := document.Call("createElement", "button")
-	CreatVoteBtn.Set("innerText", "Invite to Chess")
-	CreatVoteBtn.Call("setAttribute", "id", "ChessGen")
-	CreatVoteBtn.Call("setAttribute", "onClick", "CreateChess")
+	CreatChessBtn := document.Call("createElement", "button")
+	CreatChessBtn.Set("innerText", "Invite to Chess")
+	CreatChessBtn.Call("setAttribute", "id", "ChessGen")
+	CreatChessBtn.Call("setAttribute", "onClick", "CreateChess")
 
 	div.Call("appendChild", textbox)
-	div.Call("appendChild", CreatVoteBtn)
+	div.Call("appendChild", CreatChessBtn)
 
 	document.Get("body").Call("appendChild", div)
 
@@ -1461,7 +1467,7 @@ func CreateChessBoard(color string) {
 		"var $pgn = $('#pgn'); "+
 		"function onDragStart (source, piece, position, orientation) {"+
 		" if (game.game_over()) return false;"+
-		" if ((game.turn() === 'w' && piece.search(/^b/) !== -1) || (game.turn() === 'b' && piece.search(/^w/) !== -1)) {return false}};"+
+		" if ((game.turn() === 'w' && role === 'black') || (game.turn() === 'b' && role === 'white')) {return false}};"+
 		" function onDrop (source, target) { "+
 		"var move = game.move({ from: source, to: target, promotion: 'q'});"+
 		" game.undo(); "+
