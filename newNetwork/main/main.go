@@ -52,9 +52,9 @@ func main() {
 
 	peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
 	serverID = hotstuff.ID(0)
-	value1 := js.Global().Get("document").Call("getElementById", "self-id").Get("value").String()
-	// selfID, _ := strconv.ParseUint(strings.Split(value1, " ")[1], 10, 32)
-	selfID, _ := strconv.ParseUint(value1, 10, 32)
+	value1 := js.Global().Get("document").Call("getElementById", "self-id").Get("innerText").String()
+	selfID, _ := strconv.ParseUint(strings.Split(value1, " ")[1], 10, 32)
+	// selfID, _ := strconv.ParseUint(value1, 10, 32)
 	serverID = hotstuff.ID(selfID)
 	for {
 		if serverID != 0 {
@@ -68,7 +68,7 @@ func main() {
 
 	blocks, _ = strconv.Atoi(blockStr)
 	fmt.Println(blocks)
-	if blocks == 1 {
+	if blocks == 0 {
 		blocks = 1000
 	}
 	CreateCommandList()
@@ -242,9 +242,9 @@ func main() {
 	for {
 		if srv.Pm.GetLeader(hs.LastVote()) != srv.Pm.GetLeader(hs.LastVote()+1) {
 			if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
-				fmt.Println("I am Leader")
+				// fmt.Println("I am Leader")
 			} else {
-				fmt.Println("I am Normal Replica")
+				// fmt.Println("I am Normal Replica")
 			}
 		}
 		if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
@@ -317,7 +317,7 @@ func main() {
 				msg := srv.Hs.NewView()
 				srv.Hs.OnNewView(msg)
 				msgString := NewViewToString(msg)
-				fmt.Println("Sending timeout msg to replicas...")
+				// fmt.Println("Sending timeout msg to replicas...")
 				sendLock.Lock()
 				// sendBytes = append(sendBytes, []byte(msgString))
 				SendCommand([]byte(msgString))
@@ -325,6 +325,7 @@ func main() {
 			}
 			if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
 				fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
+				start = time.Now()
 			}
 			if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == blocks {
 				srv.Pm.Stop()
@@ -340,7 +341,7 @@ func main() {
 				newView := strings.Split(string(recvBytes[0]), ":")
 				recvLock.Unlock()
 				if newView[0] == "NewView" {
-					fmt.Println("Recieved timeout from leader...")
+					// fmt.Println("Recieved timeout from leader...")
 					recvLock.Lock()
 					msg := StringToNewView(string(recvBytes[0]))
 					recvLock.Unlock()
@@ -369,7 +370,7 @@ func main() {
 				}
 				block := StringToBlock(obj)
 				// fmt.Print("Handle propose for view: ")
-				fmt.Println(block.View)
+				// fmt.Println(block.View)
 				pcString, err := srv.Hs.OnPropose(block)
 				if err != nil {
 					fmt.Println(err)
@@ -389,7 +390,7 @@ func main() {
 				timeoutview := srv.Hs.NewView()
 				srv.Hs.OnNewView(timeoutview)
 				msg := NewViewToString(timeoutview)
-				fmt.Println("Sending timeout msg to leader...")
+				// fmt.Println("Sending timeout msg to leader...")
 				sendLock.Lock()
 				// sendBytes = append(sendBytes, []byte(msg))
 				SendCommand([]byte(msg))
@@ -403,6 +404,7 @@ func main() {
 			}
 			if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
 				fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
+				start = time.Now()
 			}
 			if srv.Hs.BlockChain().Len() == blocks {
 				srv.Pm.Stop()
@@ -631,10 +633,10 @@ create:
 							start = time.Now()
 						}
 					} else if strings.TrimSpace(string(msg.Data)) == "startChessWhite" {
-						fmt.Println("Starting chess")
+						// fmt.Println("Starting chess")
 						CreateChessBoard("white")
 					} else if strings.TrimSpace(string(msg.Data)) == "startChessSpectate" {
-						fmt.Println("Starting chess")
+						// fmt.Println("Starting chess")
 						CreateChessBoard("spectate")
 					}
 				} else {
@@ -725,7 +727,7 @@ create:
 	<-gatherComplete
 
 	if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete && strings.Contains(peerConnection.LocalDescription().SDP, "c=IN IP4 0.0.0.0") {
-		fmt.Println(peerConnection.LocalDescription().SDP)
+		// fmt.Println(peerConnection.LocalDescription().SDP)
 		DeliverAnswer(peerConnection.LocalDescription().SDP, senderID)
 
 	} else if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete && !strings.Contains(peerConnection.LocalDescription().SDP, "c=IN IP4 0.0.0.0") {
@@ -735,7 +737,7 @@ create:
 	<-waiter
 
 	removeAnswer(senderID)
-	fmt.Println("Returning")
+	// fmt.Println("Returning")
 	return dc, senderID
 }
 
@@ -807,7 +809,7 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 		// go ConnectionLeader()
 		// fmt.Println("Starting connection leader")
 		if msg.IsString {
-			fmt.Println(string(msg.Data))
+			// fmt.Println(string(msg.Data))
 			if strings.TrimSpace(string(msg.Data)) == "StartConnectionLeader" {
 				go ConnectionLeader()
 			} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
@@ -821,10 +823,10 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 					start = time.Now()
 				}
 			} else if strings.TrimSpace(string(msg.Data)) == "startChessWhite" {
-				fmt.Println("Starting chess")
+				// fmt.Println("Starting chess")
 				CreateChessBoard("white")
 			} else if strings.TrimSpace(string(msg.Data)) == "startChessSpectate" {
-				fmt.Println("Starting chess")
+				// fmt.Println("Starting chess")
 				CreateChessBoard("spectate")
 			}
 		} else {
@@ -863,7 +865,7 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 	<-gatherComplete
 
 	if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete {
-		fmt.Println(peerConnection.LocalDescription().SDP)
+		// fmt.Println(peerConnection.LocalDescription().SDP)
 		DeliverOffer(peerConnection.LocalDescription().SDP)
 	}
 
@@ -885,7 +887,7 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 		time.Sleep(time.Millisecond * 5000)
 	}
 
-	fmt.Println(answer)
+	// fmt.Println(answer)
 
 	answersdp := webrtc.SessionDescription{Type: webrtc.SDPTypeAnswer, SDP: answer}
 
@@ -895,11 +897,11 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 		panic(err)
 	}
 
-	fmt.Println("Remote desc set")
+	// fmt.Println("Remote desc set")
 
 	<-waiter
 	RemoveOffer()
-	fmt.Println("Returning")
+	// fmt.Println("Returning")
 	return dataChannel, senderID
 }
 
@@ -961,7 +963,7 @@ func ReceiveOffer() (string, string) {
 	if err != nil {
 		return "empty", "message"
 	}
-	fmt.Println(offer)
+	// fmt.Println(offer)
 
 	msgs := strings.Split(offer, "&")
 
@@ -990,7 +992,7 @@ func ReceiveAnswer() (string, string) {
 		return "empty", "message"
 	}
 
-	fmt.Println(answer)
+	// fmt.Println(answer)
 
 	msgs := strings.Split(answer, "&")
 
@@ -1248,9 +1250,9 @@ func SendCommand(cmd []byte) error {
 			}
 		}
 	} else {
-		fmt.Print("Sending to ")
-		fmt.Println(srv.Pm.GetLeader(srv.Hs.LastVote() + 1))
-		fmt.Println(peerMap)
+		// fmt.Print("Sending to ")
+		// fmt.Println(srv.Pm.GetLeader(srv.Hs.LastVote() + 1))
+		// fmt.Println(peerMap)
 		if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 			recvLock.Lock()
 			recvBytes = append(recvBytes, cmd)
@@ -1522,7 +1524,7 @@ func CreateChess(this js.Value, args []js.Value) interface{} {
 		return nil
 	}
 
-	fmt.Println(hotstuff.ID(chessVS))
+	// fmt.Println(hotstuff.ID(chessVS))
 	SendStringTo("startChessWhite", hotstuff.ID(chessVS))
 
 	for id, _ := range peerMap {
@@ -1535,6 +1537,28 @@ func CreateChess(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+// func ChessTest(this js.Value, args []js.Value) interface{} {
+
+// 	from := "e2"
+// 	to := "e4"
+
+// 	document := js.Global().Get("document")
+
+// 	game := js.Global().Get("game")
+// 	board := js.Global().Get("board")
+// 	chessCmd := "ChessCMD = {from: '" + from + "', to: '" + to + "', promotion: 'q'}"
+// 	move := document.Call("createElement", "script")
+// 	move.Set("innerText", chessCmd)
+// 	document.Get("body").Call("appendChild", move)
+// 	// AppendCmd(chessCmd)
+// 	game.Call("move", js.Global().Get("ChessCMD"))
+// 	board.Call("position", game.Call("fen"))
+// 	fmt.Println("Chess executed")
+// 	document.Get("body").Call("removeChild", move)
+
+// 	return nil
+// }
+
 func registerCallbacks() {
 	js.Global().Set("GetSelfID", js.FuncOf(GetSelfID))
 	js.Global().Set("GetBlockNumber", js.FuncOf(GetBlockNumber))
@@ -1544,6 +1568,7 @@ func registerCallbacks() {
 	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))
 	js.Global().Set("StartAgain", js.FuncOf(StartAgain))
 	js.Global().Set("CreateChess", js.FuncOf(CreateChess))
+	// js.Global().Set("ChessTest", js.FuncOf(ChessTest))
 }
 
 // defer elapsed("GetSelfID")()

@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"encoding/hex"
-	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -150,8 +149,8 @@ func (srv *Server) Deliver(_ context.Context, block *hotstuff.Block) {
 
 // Exec executes a command
 func (srv *Server) Exec(cmd hotstuff.Command) {
-	fmt.Print("Command executed: ")
-	fmt.Println(cmd)
+	// fmt.Print("Command executed: ")
+	// fmt.Println(cmd)
 	if strings.Contains(string(cmd), "chess") {
 		execChess(cmd)
 	}
@@ -198,13 +197,20 @@ func execChess(cmd hotstuff.Command) {
 	move := strings.Split(string(cmd), "chess")
 	moveCmd := strings.TrimSpace(move[1])
 	steps := strings.Split(moveCmd, "fromTo")
+	document := js.Global().Get("document")
 	game := js.Global().Get("game")
 	board := js.Global().Get("board")
-	chessCmd := "{from: '" + steps[0] + "', to: '" + steps[1] + "', promotion: 'q'}"
-	AppendCmd(chessCmd)
-	game.Call("move", "{from: 'e2', to: 'e4', promotion: 'q'}")
+	status := js.Global().Get("updateStatus")
+	chessCmd := "ChessCMD = {from: '" + steps[0] + "', to: '" + steps[1] + "', promotion: 'q'}"
+	moveScript := document.Call("createElement", "script")
+	moveScript.Set("innerText", chessCmd)
+	document.Get("body").Call("appendChild", moveScript)
+	// AppendCmd(chessCmd)
+	game.Call("move", js.Global().Get("ChessCMD"))
 	board.Call("position", game.Call("fen"))
-	fmt.Println("Chess executed")
+	status.Invoke()
+	// fmt.Println("Chess executed")
+	document.Get("body").Call("removeChild", moveScript)
 	return
 }
 
@@ -226,6 +232,16 @@ func AppendCmd(cmd string) {
 
 	div := document.Call("getElementById", "cmdList")
 
+	count := div.Get("childElementCount").Int()
+	// fmt.Println(count)
+	// countInt, _ := strconv.Atoi(count)
+
+	// fmt.Println(countInt)
+	for i := count; i > 50; i-- {
+		div.Call("removeChild", div.Get("lastElementChild"))
+	}
+
+	// document.getElementById("cmdList").removeChild(document.getElementById("cmdList").lastElementChild)
 	// divChild := document.Call("getElementById", "cmdList").Get("childNodes[0]")
 
 	text := document.Call("createElement", "p")
