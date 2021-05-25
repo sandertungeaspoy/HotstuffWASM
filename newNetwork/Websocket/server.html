@@ -5,6 +5,9 @@
         <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">  
 		<script src="script/wasm_exec.js"></script>
         <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+        <!-- <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script> -->
+        <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script> -->
+        <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script> -->
 		<script>
             var read = new WebAssembly.Memory({initial:10, maximum:100});
             var write = new WebAssembly.Memory({initial:10, maximum:100});
@@ -47,41 +50,66 @@
                 document.getElementById("id4").disabled = true;
             }
         </script> -->
-        
+        <link rel="stylesheet" href="style.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
 	</head>
 	<body>
-                
-		<h1>HotStuff WASM Server</h1>
-			Self-ID:<input type="text" id="self-id" name="Server ID" value="1" disabled=true readonly>
-            Block amount:<input type="text" id="blocks" name="blocks" value="1">
-			
-			<button onClick="GetSelfID('self-id'); GetBlockNumber('blocks'); this.disabled = true;" id="idButton">Assign</button>
+        <div id="header">
+            <div id="menu" class="btn-group-vertical">
+                <button type="button" class="btn btn-md btn-default" onclick="restartWebRTCHandler();" id="restartButton">Restart WebRTC</button>
+                <a id="checksum" role="button" class="btn btn-md btn-default" href="hash.txt" download>MD5 Checksum</a>
+            </div>
+            <div>     
+                <h1 id="wasmstuff"><span id="wasm">Wasm</span><span id="stuff">Stuff</span></h1>
+            </div>
+        </div>
+        <div class="center">
+            <div id="idButton">
+                <button id="self-id" class="btn btn-lg" onclick="changeServer();">Test</button>
+            </div>
+        </div>
+        <div class="center">
+            <div id="buttons">
+                <button id="button1" type="button" class="btn btn-lg" onClick="chooseServer('1');" id="id1">Start Srv 1</button>
+                <button id="button2" type="button" class="btn btn-lg" onClick="chooseServer('2');" id="id2">Start Srv 2</button>
+                <button id="button3" type="button" class="btn btn-lg" onClick="chooseServer('3');" id="id3">Start Srv 3</button>
+                <button id="button4" type="button" class="btn btn-lg" onClick="chooseServer('4');" id="id4">Start Srv 4</button>
+            </div>
+        </div>
+        <div id="options">
+            <div id="buttons">
+                <button id="button1" type="button" class="btn btn-lg" onClick="showCmd();" id="id1">Benchmark</button>
+                <button id="button2" type="button" class="btn btn-lg" onClick="playChess();" id="id2">Play Chess</button>
+            </div>
+        </div>
 
-            <button onClick="document.getElementById('self-id').value = 1;" id="id1">Start Srv 1</button>
-            <button onClick="document.getElementById('self-id').value = 2;" id="id2">Start Srv 2</button>
-            <button onClick="document.getElementById('self-id').value = 3;" id="id3">Start Srv 3</button>
-            <button onClick="document.getElementById('self-id').value = 4;" id="id4">Start Srv 4</button>
-
-			<!-- Chat:<input type="text" id="text" name="charbox" value="Test"> -->
-            <p id="textbox">This is a test</p>
-			<!-- <button onClick="passUint8ArrayToGo();" id="SendButton">Send</button> -->
-            <button onClick="assignHandler();" id="RecvButton">Assign</button>
-			<button onClick="run();" id="runButton">Run</button>
-            <button onClick="StartAgain();" id="startButton" >Start Again</button>
-            <button onclick="restartWebRTCHandler();" id="restartButton">Restart WebRTC handler</button>
-            Command:<input type="text" id="command" name="cmd">
-            <button onClick="GetCommand('command');">Send command</button>
-
-            <a href="hash.txt" download>Download MD5 Checksums</a>
+        <div id="benchmark" class="center">
+            <div class="inputs">
+                <div class="input-group">
+                    <span class="input-group-addon">Blocks</span>
+                    <input id="blocks" type="text" class="sm-form-control col-sm" name="blocks" placeholder="Enter a number">
+                    <button id="blockButton" class="btn btn-default" onclick="run();" type="button">GO</button>
+                </div>
+            </div>
+            <div id="padding"></div>
+            <div class="inputs">
+                <div id="cmds" class="input-group">
+                    <span class="input-group-addon">Command</span>
+                    <input id="command" type="text" class="sm-form-control col-sm" name="cmd" placeholder="Enter a command">
+                    <button id="cmdButton" class="btn btn-default" onclick="GetCommand('command');" type="button">Send</button>
+                </div>
+            </div>
+        </div>
+        
 	</body>
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU" crossorigin="anonymous">
     <script src="script/jquery-3.4.1.min.js"></script>
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js" integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.2/chess.js" integrity="sha384-s3XgLpvmHyscVpijnseAmye819Ee3yaGa8NxstkJVyA6nuDFjt59u1QvuEl/mecz" crossorigin="anonymous"></script>
     <script>
-        intervalClearConsole = window.setInterval(function(){
-            console.clear();
-          }, 10000);
+        // intervalClearConsole = window.setInterval(function(){
+        //     console.clear();
+        //   }, 10000);
 
         function restartWebRTCHandler() {
             var wsRestart = new WebSocket("ws://127.0.0.1:13372");
@@ -91,6 +119,35 @@
             };
         };
 
+        function showCmd() {
+            document.getElementById('benchmark').style = 'display: flex; justify-content: center;';
+            document.getElementById('options').style = 'display: none;';
+        }
+
+        function chooseServer(id) {
+            document.getElementById('self-id').innerText = 'Server ' + id;
+            document.getElementById('self-id').style = 'visibility: visible';
+            document.getElementById('buttons').style = 'display: none';
+            if (id == 1) {
+                document.getElementById('self-id').style = 'background-color: #ffc000; visibility: visible';
+                document.getElementById('options').style = 'display: flex; justify-content: center';
+            } else if (id == 2) {
+                document.getElementById('self-id').style = 'background-color: #ed7d31; visibility: visible';
+                document.getElementById('options').style = 'display: flex; justify-content: center';
+            } else if (id == 3) {
+                document.getElementById('self-id').style = 'background-color: #5b9bd5; visibility: visible';
+                document.getElementById('options').style = 'display: flex; justify-content: center';
+            } else if (id == 4) {
+                document.getElementById('self-id').style = 'background-color: #70ad47; visibility: visible';
+                document.getElementById('options').style = 'display: flex; justify-content: center';
+            }
+        }
+
+        function changeServer() {
+            document.getElementById('self-id').style = 'visibility: hidden';
+            document.getElementById('buttons').style = 'display: unset';
+            document.getElementById('options').style = 'display: hidden';
+        }
 
         function setText() {
             document.getElementById("textbox").innerHTML = readMsg;

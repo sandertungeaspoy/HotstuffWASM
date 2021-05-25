@@ -1,0 +1,110 @@
+#wasmstuff{
+    text-align: center;
+    font-size: 3cm;
+    height: 100px;
+    margin: 0%;
+}
+#wasm {
+    color: #5b9bd5;
+}
+#stuff {
+    color: #70ad47;
+}
+body {
+    background-image: url("bakgrunn.png");
+    height: 100%;
+    background-position: bottom;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+#self-id{
+    visibility: hidden;
+}
+#idButton {
+    height: 100px;
+    display: flex;
+    align-items: center;
+}
+#options {
+    display: none;
+}
+
+.center {
+    display: flex;
+    justify-content: center;
+}
+
+#benchmark {
+    display: none;
+}
+
+#buttons{
+    height: 150px;
+}
+
+#button1 {
+    background-color: #ffc000;
+    float: left;
+}
+#button2 {
+    background-color: #ed7d31;
+    float: left;
+}
+#button3 {
+    background-color: #5b9bd5;
+    float: left;
+    clear: left;
+}
+#button4 {
+    background-color: #70ad47;
+    float: left;
+}
+.btn {
+    color: white;
+    float: left;
+    margin: 5px;
+    padding: 20px 0;
+}
+
+#blockButton, #cmdButton {
+    margin: 0%;
+    padding: 2px;
+    float: right;
+    width: 50px;
+}
+#padding {
+    width: 10px;
+}
+.inputs{
+    display: flex;
+    justify-content: center;
+}
+
+.inline {
+    float: left;
+}
+
+#header {
+    position: relative;
+}
+#menu {
+    position: absolute;
+    left: 0%;
+    top: 0%;
+}
+
+#checksum {
+    margin: 5px;
+    background-color: darkgray;
+    color: white;
+}
+
+#restartButton {
+    background-color: darkgray;
+    color: white;
+}
+
+/* grønn: #70ad47 */
+/* oransj: #ed7d31 */
+/* blå: #5b9bd5 */
+/* gul: #ffc000 */
