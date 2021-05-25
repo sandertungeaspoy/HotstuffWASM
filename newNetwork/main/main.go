@@ -53,6 +53,7 @@ func main() {
 	peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
 	serverID = hotstuff.ID(0)
 	value1 := js.Global().Get("document").Call("getElementById", "self-id").Get("value").String()
+	// selfID, _ := strconv.ParseUint(strings.Split(value1, " ")[1], 10, 32)
 	selfID, _ := strconv.ParseUint(value1, 10, 32)
 	serverID = hotstuff.ID(selfID)
 	for {
@@ -67,6 +68,9 @@ func main() {
 
 	blocks, _ = strconv.Atoi(blockStr)
 	fmt.Println(blocks)
+	if blocks == 1 {
+		blocks = 1000
+	}
 	CreateCommandList()
 	CreateChessGame()
 
@@ -295,7 +299,7 @@ func main() {
 						recvBytes = make([][]byte, 0)
 					}
 					srv.Cmds.Cmds = append(srv.Cmds.Cmds, hotstuff.Command(cmdString))
-					srv.Pm.Proposal <- srv.Hs.Propose()
+					// srv.Pm.Proposal <- srv.Hs.Propose()
 					recvLock.Unlock()
 					continue
 				}
@@ -626,10 +630,13 @@ create:
 							srv.Pm.Start()
 							start = time.Now()
 						}
-					} else if strings.TrimSpace(string(msg.Data)) == "StartChessWhite" {
+					} else if strings.TrimSpace(string(msg.Data)) == "startChessWhite" {
+						fmt.Println("Starting chess")
 						CreateChessBoard("white")
+					} else if strings.TrimSpace(string(msg.Data)) == "startChessSpectate" {
+						fmt.Println("Starting chess")
+						CreateChessBoard("spectate")
 					}
-
 				} else {
 					recvLock.Lock()
 					recvBytes = append(recvBytes, msg.Data)
@@ -800,6 +807,7 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 		// go ConnectionLeader()
 		// fmt.Println("Starting connection leader")
 		if msg.IsString {
+			fmt.Println(string(msg.Data))
 			if strings.TrimSpace(string(msg.Data)) == "StartConnectionLeader" {
 				go ConnectionLeader()
 			} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
@@ -812,6 +820,12 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 					srv.Pm.Start()
 					start = time.Now()
 				}
+			} else if strings.TrimSpace(string(msg.Data)) == "startChessWhite" {
+				fmt.Println("Starting chess")
+				CreateChessBoard("white")
+			} else if strings.TrimSpace(string(msg.Data)) == "startChessSpectate" {
+				fmt.Println("Starting chess")
+				CreateChessBoard("spectate")
 			}
 		} else {
 			recvLock.Lock()
@@ -1206,8 +1220,8 @@ func ConnectionLeader() {
 				peerMap[hotstuff.ID(3)].SendText("StartConnectionLeader")
 			}
 			purgeWebRTCDatabase()
-			srv.Pm.Start()
-			start = time.Now()
+			// srv.Pm.Start()
+			// start = time.Now()
 			break
 		}
 	}
@@ -1269,6 +1283,7 @@ func SendStringTo(cmd string, srvID hotstuff.ID) error {
 	} else {
 		err := peerMap[srvID].SendText(cmd)
 		if err != nil {
+			fmt.Println(err)
 			return err
 		}
 	}
@@ -1367,7 +1382,7 @@ func GetCommand(this js.Value, i []js.Value) interface{} {
 		command := hotstuff.Command(cmd)
 		srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
 		cmdLock.Unlock()
-		srv.Pm.Proposal <- srv.Hs.Propose()
+		// srv.Pm.Proposal <- srv.Hs.Propose()
 	} else {
 		incomingCmd <- cmd
 	}
@@ -1426,7 +1441,7 @@ func CreateChessGame() error {
 	CreatChessBtn := document.Call("createElement", "button")
 	CreatChessBtn.Set("innerText", "Invite to Chess")
 	CreatChessBtn.Call("setAttribute", "id", "ChessGen")
-	CreatChessBtn.Call("setAttribute", "onClick", "CreateChess")
+	CreatChessBtn.Call("setAttribute", "onClick", "CreateChess()")
 
 	div.Call("appendChild", textbox)
 	div.Call("appendChild", CreatChessBtn)
@@ -1470,12 +1485,12 @@ func CreateChessBoard(color string) {
 		"var $pgn = $('#pgn'); "+
 		"function onDragStart (source, piece, position, orientation) {"+
 		" if (game.game_over()) return false;"+
-		" if ((game.turn() === 'w' && role === 'black') || (game.turn() === 'b' && role === 'white')) {return false}};"+
+		" if ((game.turn() === 'w' && role === 'black') || (game.turn() === 'b' && role === 'white' ) || (role === 'black' && piece.search(/^w/) !== -1) || (role === 'white' && piece.search(/^b/) !== -1) || (role === 'spectate')) {return false}};"+
 		" function onDrop (source, target) { "+
 		"var move = game.move({ from: source, to: target, promotion: 'q'});"+
 		" game.undo(); "+
 		" if (move === null) return 'snapback';"+
-		" document.getElementById(\"command\").value = \"chess:\" + source + \"fromTo\" + target; };"+
+		" document.getElementById(\"command\").value = \"chess\" + source + \"fromTo\" + target; };"+
 		" function updateStatus () {"+
 		"var status = '';"+
 		"var moveColor = 'White';"+
@@ -1501,13 +1516,20 @@ func CreateChessBoard(color string) {
 
 func CreateChess(this js.Value, args []js.Value) interface{} {
 	document := js.Global().Get("document")
-	vsID := document.Call("getElementById", "Chess").Get("value").String()
+	vsID := document.Call("getElementById", "ChessVS").Get("value").String()
 	chessVS, err := strconv.Atoi(vsID)
 	if err != nil {
 		return nil
 	}
 
+	fmt.Println(hotstuff.ID(chessVS))
 	SendStringTo("startChessWhite", hotstuff.ID(chessVS))
+
+	for id, _ := range peerMap {
+		if id != serverID && id != hotstuff.ID(chessVS) {
+			SendStringTo("startChessSpectate", id)
+		}
+	}
 
 	CreateChessBoard("black")
 	return nil

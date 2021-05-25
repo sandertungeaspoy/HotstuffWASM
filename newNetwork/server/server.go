@@ -152,7 +152,7 @@ func (srv *Server) Deliver(_ context.Context, block *hotstuff.Block) {
 func (srv *Server) Exec(cmd hotstuff.Command) {
 	fmt.Print("Command executed: ")
 	fmt.Println(cmd)
-	if strings.Contains(string(cmd), "chess:") {
+	if strings.Contains(string(cmd), "chess") {
 		execChess(cmd)
 	}
 	AppendCmd(string(cmd))
@@ -195,12 +195,17 @@ func (cmdBuf *CmdBuffer) Accept(cmd hotstuff.Command) bool {
 }
 
 func execChess(cmd hotstuff.Command) {
-	move := strings.Split(string(cmd), "chess:")
+	move := strings.Split(string(cmd), "chess")
 	moveCmd := strings.TrimSpace(move[1])
 	steps := strings.Split(moveCmd, "fromTo")
-	console := js.Global().Get("console")
+	game := js.Global().Get("game")
+	board := js.Global().Get("board")
 	chessCmd := "{from: '" + steps[0] + "', to: '" + steps[1] + "', promotion: 'q'}"
-	console.Call("game.move", chessCmd)
+	AppendCmd(chessCmd)
+	game.Call("move", "{from: 'e2', to: 'e4', promotion: 'q'}")
+	board.Call("position", game.Call("fen"))
+	fmt.Println("Chess executed")
+	return
 }
 
 // GetCommand returns the front command from the commandbuffer

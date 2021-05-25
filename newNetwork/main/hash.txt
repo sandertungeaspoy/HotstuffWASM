@@ -1,0 +1,4 @@
+MD5 hash of main.go: 6dd1e21c27d81b0613090caa8162fff1 CertUtil: -hashfile command completed successfully.
+ 
+CertUtil: -hashfile command FAILED: 0x80070002 (WIN32: 2 ERROR_FILE_NOT_FOUND) CertUtil: Systemet finner ikke angitt fil.
+ 

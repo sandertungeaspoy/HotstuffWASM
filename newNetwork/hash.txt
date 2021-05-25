@@ -1,0 +1,4 @@
+CertUtil: -hashfile command FAILED: 0x80070002 (WIN32: 2 ERROR_FILE_NOT_FOUND) CertUtil: Systemet finner ikke angitt fil.
+ 
+CertUtil: -hashfile command FAILED: 0x80070002 (WIN32: 2 ERROR_FILE_NOT_FOUND) CertUtil: Systemet finner ikke angitt fil.
+ 
