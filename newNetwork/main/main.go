@@ -1391,6 +1391,7 @@ func GetCommand(this js.Value, i []js.Value) interface{} {
 	}
 	return nil
 }
+
 func StartAgain(this js.Value, args []js.Value) interface{} {
 	// fmt.Println("Before")
 	starter <- struct{}{}
@@ -1528,7 +1529,8 @@ func CreateChessBoard(color string) {
 		"var move = game.move({ from: source, to: target, promotion: 'q'});"+
 		" game.undo(); "+
 		" if (move === null) return 'snapback';"+
-		" document.getElementById(\"command\").value = \"chess\" + source + \"fromTo\" + target; };"+
+		" document.getElementById(\"command\").value = \"chess\" + source + \"fromTo\" + target;"+
+		" GetCommand('command'); };"+
 		" function updateStatus () {"+
 		"var status = '';"+
 		"var moveColor = 'White';"+
