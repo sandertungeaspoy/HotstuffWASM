@@ -323,10 +323,10 @@ func main() {
 				SendCommand([]byte(msgString))
 				sendLock.Unlock()
 			}
-			if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
-				fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
-				start = time.Now()
-			}
+			// if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
+			// 	fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
+			// 	start = time.Now()
+			// }
 			if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == blocks {
 				srv.Pm.Stop()
 				fmt.Printf("%v blocks took %v\n", blocks, time.Since(start))
@@ -402,10 +402,10 @@ func main() {
 				// sendBytes = append(sendBytes, []byte(cmdString))
 				SendCommand([]byte(cmdString))
 			}
-			if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
-				fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
-				start = time.Now()
-			}
+			// if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
+			// 	fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
+			// 	start = time.Now()
+			// }
 			if srv.Hs.BlockChain().Len() == blocks {
 				srv.Pm.Stop()
 				fmt.Printf("%v blocks took %v\n", blocks, time.Since(start))
