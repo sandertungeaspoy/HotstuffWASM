@@ -115,6 +115,10 @@ body {
     height: 10px;
 }
 
+.moreSpace{
+    height: 50px;
+}
+
 .inputs{
     display: flex;
     justify-content: center;

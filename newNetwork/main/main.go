@@ -1494,23 +1494,37 @@ func CreateChessBoard(color string) {
 	// document.Get("body").Call("appendChild", div)
 	document.Call("getElementById", "chessGame").Call("appendChild", div)
 
+	info := document.Call("createElement", "div")
+	info.Call("setAttribute", "style", "width: 500px")
+
 	fen := document.Call("createElement", "div")
 	fen.Call("setAttribute", "id", "fen")
-	fen.Call("setAttribute", "style", "float:left")
+	// fen.Call("setAttribute", "class", "space")
 	// document.Get("body").Call("appendChild", fen)
-	document.Call("getElementById", "chessGame").Call("appendChild", fen)
+	info.Call("appendChild", fen)
+
+	space1 := document.Call("createElement", "div")
+	space1.Call("setAttribute", "class", "moreSpace")
+	info.Call("appendChild", space1)
 
 	status := document.Call("createElement", "div")
 	status.Call("setAttribute", "id", "status")
-	status.Call("setAttribute", "style", "float:left")
+	// status.Call("setAttribute", "class", "space")
 	// document.Get("body").Call("appendChild", status)
-	document.Call("getElementById", "chessGame").Call("appendChild", status)
+	// document.Call("getElementById", "chessGame")
+	info.Call("appendChild", status)
+
+	space2 := document.Call("createElement", "div")
+	space2.Call("setAttribute", "class", "moreSpace")
+	info.Call("appendChild", space2)
 
 	pgn := document.Call("createElement", "div")
 	pgn.Call("setAttribute", "id", "pgn")
-	pgn.Call("setAttribute", "style", "float:left")
+	// pgn.Call("setAttribute", "style", "float:left")
 	// document.Get("body").Call("appendChild", pgn)
-	document.Call("getElementById", "chessGame").Call("appendChild", pgn)
+	info.Call("appendChild", pgn)
+
+	document.Call("getElementById", "chessGame").Call("appendChild", info)
 
 	role := document.Call("createElement", "script")
 	roleString := ("var role = \"" + color + "\"")
