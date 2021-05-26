@@ -71,8 +71,7 @@ func main() {
 	if blocks == 0 {
 		blocks = 1000
 	}
-	CreateCommandList()
-	CreateChessGame()
+	// CreateCommandList()
 
 	sendBytes = make([][]byte, 0)
 	recvBytes = make([][]byte, 0)
@@ -1083,6 +1082,7 @@ func EstablishConnections() {
 				// srv.Pm.Proposal <- srv.Hs.Propose()
 				// srv.Pm.PropDone = false
 				started = true
+				// CreateChessGame()
 			}
 		}
 	} else if srv.ID == hotstuff.ID(2) {
@@ -1142,6 +1142,7 @@ func EstablishConnections() {
 				if len(peerMap) == 3 && !started {
 					SendStringTo("StartWasmStuff", hotstuff.ID(0))
 					srv.Pm.Start()
+					// CreateChessGame()
 					start = time.Now()
 					purgeWebRTCDatabase()
 					started = true
@@ -1410,70 +1411,105 @@ func AppendCmd(document js.Value, cmd string) {
 	document.Get("body").Call("appendChild", div)
 }
 
-func CreateCommandList() error {
+// func CreateCommandList() error {
 
-	document := js.Global().Get("document")
-	div := document.Call("createElement", "div")
+// 	document := js.Global().Get("document")
+// 	div := document.Call("createElement", "div")
 
-	div.Call("setAttribute", "style", "overflow:scroll; height:500px; width:500px; float:right; margin-right:150px")
-	div.Call("setAttribute", "id", "cmdList")
+// 	div.Call("setAttribute", "style", "overflow:scroll; height:500px; width:500px; float:right; margin-right:150px")
+// 	div.Call("setAttribute", "id", "cmdList")
 
-	text := document.Call("createElement", "p")
+// 	text := document.Call("createElement", "p")
 
-	text.Set("innerText", "List of Executed Commands")
+// 	text.Set("innerText", "List of Executed Commands")
 
-	div.Call("appendChild", text)
+// 	div.Call("appendChild", text)
 
-	document.Get("body").Call("appendChild", div)
+// 	document.Get("body").Call("appendChild", div)
 
-	return nil
-}
+// 	return nil
+// }
 
-func CreateChessGame() error {
-	document := js.Global().Get("document")
-	div := document.Call("createElement", "div")
-	div.Call("setAttribute", "id", "ChessDiv")
-	textbox := document.Call("createElement", "input")
-	textbox.Call("setAttribute", "type", "text")
-	textbox.Call("setAttribute", "id", "ChessVS")
-	lbl := document.Call("createElement", "label")
-	lbl.Call("setAttribute", "for", "ChessVS")
-	lbl.Set("innerText", "Player to invite: ")
+// func CreateChessGame() error {
+// 	document := js.Global().Get("document")
+// 	div := document.Call("createElement", "div")
+// 	div.Call("setAttribute", "id", "ChessDiv")
+// 	textbox := document.Call("createElement", "input")
+// 	textbox.Call("setAttribute", "type", "text")
+// 	textbox.Call("setAttribute", "id", "ChessVS")
+// 	lbl := document.Call("createElement", "label")
+// 	lbl.Call("setAttribute", "for", "ChessVS")
+// 	lbl.Set("innerText", "Player to invite: ")
 
-	CreatChessBtn := document.Call("createElement", "button")
-	CreatChessBtn.Set("innerText", "Invite to Chess")
-	CreatChessBtn.Call("setAttribute", "id", "ChessGen")
-	CreatChessBtn.Call("setAttribute", "onClick", "CreateChess()")
+// 	buttonGroup := document.Call("createElement", "div")
+// 	buttonGroup.Call("setAttribute", "id", "ChessVS")
+// 	// buttonGroup.Call("setAttribute", "class", "center")
 
-	div.Call("appendChild", textbox)
-	div.Call("appendChild", CreatChessBtn)
+// 	for id := range peerMap {
+// 		fmt.Println("Creating buttons..")
+// 		button := document.Call("createElement", "button")
+// 		button.Call("setAttribute", "type", "button")
+// 		idInt := strconv.FormatUint(uint64(id), 10)
+// 		innerText := "Server " + idInt
+// 		button.Set("innerText", innerText)
+// 		if id == 1 {
+// 			button.Call("setAttribute", "class", "button1")
+// 		} else if id == 2 {
+// 			button.Call("setAttribute", "style", "background-color: #ed7d31")
+// 		} else if id == 3 {
+// 			button.Call("setAttribute", "style", "background-color: #5b9bd5")
+// 		} else if id == 4 {
+// 			button.Call("setAttribute", "style", "background-color: #70ad47")
+// 		}
+// 		button.Call("setAttribute", "onClick", "CreateChess()")
+// 		buttonGroup.Call("appendChild", button)
+// 	}
+// 	// document.getElementById('self-id').style = 'background-color: #ffc000;
+// 	// <div id="menu" class="btn-group-vertical">
+// 	// 	<button type="button" class="btn btn-md btn-default" onclick="restartWebRTCHandler();" id="restartButton">Restart WebRTC</button>
+// 	// 	<a id="checksum" role="button" class="btn btn-md btn-default" href="hash.txt" download>MD5 Checksum</a>
+// 	// </div>
 
-	document.Get("body").Call("appendChild", div)
+// 	// CreatChessBtn := document.Call("createElement", "button")
+// 	// CreatChessBtn.Set("innerText", "Invite to Chess")
+// 	// CreatChessBtn.Call("setAttribute", "id", "ChessGen")
+// 	// CreatChessBtn.Call("setAttribute", "onClick", "CreateChess()")
 
-	return nil
-}
+// 	div.Call("appendChild", lbl)
+// 	div.Call("appendChild", buttonGroup)
+// 	// div.Call("appendChild", CreatChessBtn)
+
+// 	document.Call("getElementById", "chessGame").Call("appendChild", div)
+
+// 	return nil
+// }
 
 func CreateChessBoard(color string) {
 	document := js.Global().Get("document")
+	document.Call("getElementById", "ChessDiv").Call("setAttribute", "style", "display: none")
 	div := document.Call("createElement", "div")
 	div.Call("setAttribute", "id", "myBoard")
 	div.Call("setAttribute", "style", "width: 400px; float:left")
-	document.Get("body").Call("appendChild", div)
+	// document.Get("body").Call("appendChild", div)
+	document.Call("getElementById", "chessGame").Call("appendChild", div)
 
 	fen := document.Call("createElement", "div")
 	fen.Call("setAttribute", "id", "fen")
 	fen.Call("setAttribute", "style", "float:left")
-	document.Get("body").Call("appendChild", fen)
+	// document.Get("body").Call("appendChild", fen)
+	document.Call("getElementById", "chessGame").Call("appendChild", fen)
 
 	status := document.Call("createElement", "div")
 	status.Call("setAttribute", "id", "status")
 	status.Call("setAttribute", "style", "float:left")
-	document.Get("body").Call("appendChild", status)
+	// document.Get("body").Call("appendChild", status)
+	document.Call("getElementById", "chessGame").Call("appendChild", status)
 
 	pgn := document.Call("createElement", "div")
 	pgn.Call("setAttribute", "id", "pgn")
 	pgn.Call("setAttribute", "style", "float:left")
-	document.Get("body").Call("appendChild", pgn)
+	// document.Get("body").Call("appendChild", pgn)
+	document.Call("getElementById", "chessGame").Call("appendChild", pgn)
 
 	role := document.Call("createElement", "script")
 	roleString := ("var role = \"" + color + "\"")
@@ -1517,8 +1553,7 @@ func CreateChessBoard(color string) {
 }
 
 func CreateChess(this js.Value, args []js.Value) interface{} {
-	document := js.Global().Get("document")
-	vsID := document.Call("getElementById", "ChessVS").Get("value").String()
+	vsID := args[0].String()
 	chessVS, err := strconv.Atoi(vsID)
 	if err != nil {
 		return nil

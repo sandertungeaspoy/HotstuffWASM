@@ -23,6 +23,7 @@
 
       		async function run() {
                 document.getElementById("blockButton").disabled = true;
+                document.getElementById('self-id').disabled = true;
         		await go.run(inst);
         		inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
                 
@@ -54,6 +55,7 @@
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
 	</head>
 	<body>
+        <div id="serverid" style="display: none;"></div>
         <div id="header">
             <div id="menu" class="btn-group-vertical">
                 <button type="button" class="btn btn-md btn-default" onclick="restartWebRTCHandler();" id="restartButton">Restart WebRTC</button>
@@ -70,16 +72,16 @@
         </div>
         <div class="center">
             <div id="buttons">
-                <button id="button1" type="button" class="btn btn-lg" onClick="chooseServer('1');" id="id1">Start Srv 1</button>
-                <button id="button2" type="button" class="btn btn-lg" onClick="chooseServer('2');" id="id2">Start Srv 2</button>
-                <button id="button3" type="button" class="btn btn-lg" onClick="chooseServer('3');" id="id3">Start Srv 3</button>
-                <button id="button4" type="button" class="btn btn-lg" onClick="chooseServer('4');" id="id4">Start Srv 4</button>
+                <button type="button" class="btn btn-lg button1" onClick="chooseServer('1');" id="id1">Start Srv 1</button>
+                <button type="button" class="btn btn-lg button2" onClick="chooseServer('2');" id="id2">Start Srv 2</button>
+                <button type="button" class="btn btn-lg button3" onClick="chooseServer('3');" id="id3">Start Srv 3</button>
+                <button type="button" class="btn btn-lg button4" onClick="chooseServer('4');" id="id4">Start Srv 4</button>
             </div>
         </div>
         <div id="options">
             <div id="buttons">
                 <button id="button1" type="button" class="btn btn-lg" onClick="showCmd();" id="id1">Benchmark</button>
-                <button id="button2" type="button" class="btn btn-lg" onClick="playChess();" id="id2">Play Chess</button>
+                <button id="button2" type="button" class="btn btn-lg" onClick="run();playChess();" id="id2">Play Chess</button>
             </div>
         </div>
 
@@ -92,13 +94,50 @@
                     <!-- <button id="testButton" class="btn btn-default" onclick="ChessTest();" type="button">Test</button> -->
                 </div>
             </div>
-            <div id="padding"></div>
+            <div class="padding"></div>
             <div class="inputs">
                 <div id="cmds" class="input-group">
                     <span class="input-group-addon">Command</span>
                     <input id="command" type="text" class="sm-form-control col-sm" name="cmd" placeholder="Enter a command">
                     <button id="cmdButton" class="btn btn-default" onclick="GetCommand('command');" type="button">Send</button>
                 </div>
+            </div>
+        </div>
+        <div id="chessGame">
+            <div id="ChessDiv">
+                <label for="ChesssVS">Choose an opponent:</label>
+                <div id="ChessVS" class="center">
+                    <div id="server1" class="hidden">
+                        <button class="btn btn-lg button2" onclick="CreateChess('2')">Server 2</button>
+                        <button class="btn btn-lg button3New" onclick="CreateChess('3')">Server 3</button>
+                        <button class="btn btn-lg button4" onclick="CreateChess('4')">Server 4</button>
+                    </div>
+                    <div id="server2" class="hidden">
+                        <button class="btn btn-lg button1" onclick="CreateChess('1')">Server 1</button>
+                        <button class="btn btn-lg button3New" onclick="CreateChess('3')">Server 3</button>
+                        <button class="btn btn-lg button4" onclick="CreateChess('4')">Server 4</button>
+                    </div>
+                    <div id="server3" class="hidden">
+                        <button class="btn btn-lg button1" onclick="CreateChess('1')">Server 1</button>
+                        <button class="btn btn-lg button2" onclick="CreateChess('2')">Server 2</button>
+                        <button class="btn btn-lg button4" onclick="CreateChess('4')">Server 4</button>
+                    </div>
+                    <div id="server4" class="hidden">
+                        <button class="btn btn-lg button1" onclick="CreateChess('1')">Server 1</button>
+                        <button class="btn btn-lg button2" onclick="CreateChess('2')">Server 2</button>
+                        <button class="btn btn-lg button3New" onclick="CreateChess('3')">Server 3</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="space"></div>
+        <div id="cmdDiv">
+            <div id="cmdPadding" class="center">
+                <h4 id="cmdHeader"> List of Executed Commands</h4>
+            </div>
+            <div class="center">
+                <div id="cmdList"></div>
             </div>
         </div>
         
@@ -120,12 +159,31 @@
             };
         };
 
+        function playChess() {
+            document.getElementById('self-id').disabled = true;
+            document.getElementById('options').style = 'display: none;';
+            document.getElementById('chessGame').style = 'display: flex; justify-content: center;';
+            
+            id = document.getElementById('serverid').innerText;
+            if (id == 1) {
+                document.getElementById('server1').classList.remove('hidden');
+            } else if (id == 2) {
+                document.getElementById('server2').classList.remove('hidden');
+            } else if (id == 3) {
+                document.getElementById('server3').classList.remove('hidden');
+            } else if (id == 4) {
+                document.getElementById('server4').classList.remove('hidden');
+            }
+        }
+
         function showCmd() {
             document.getElementById('benchmark').style = 'display: flex; justify-content: center;';
+            document.getElementById('cmdDiv').style = 'display: unset;'
             document.getElementById('options').style = 'display: none;';
         }
 
         function chooseServer(id) {
+            document.getElementById('serverid').innerText = id
             document.getElementById('self-id').innerText = 'Server ' + id;
             document.getElementById('self-id').style = 'visibility: visible';
             document.getElementById('buttons').style = 'display: none';
@@ -147,7 +205,10 @@
         function changeServer() {
             document.getElementById('self-id').style = 'visibility: hidden';
             document.getElementById('buttons').style = 'display: unset';
-            document.getElementById('options').style = 'display: hidden';
+            document.getElementById('options').style = 'display: none';
+            document.getElementById('benchmark').style = 'display: none';
+            document.getElementById('cmdDiv').style = 'display: none';
+            document.getElementById('ChessDiv').classList.add('hidden');
         }
 
         function setText() {
