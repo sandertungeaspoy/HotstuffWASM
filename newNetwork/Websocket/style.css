@@ -10,6 +10,23 @@
 #stuff {
     color: #70ad47;
 }
+
+#cmdList {
+    overflow-y: scroll;
+    height:280px;
+    width: 50%;
+}
+
+#cmdDiv {
+    display: none;
+}
+#chessGame{
+    display: none;
+}
+#ChessDiv {
+    text-align: center;
+}
+
 body {
     background-image: url("bakgrunn.png");
     height: 100%;
@@ -46,16 +63,29 @@ body {
     background-color: #ffc000;
     float: left;
 }
+.button1 {
+    background-color: #ffc000;
+    float: left;
+}
+.button2 {
+    background-color: #ed7d31;
+    float: left;
+}
 #button2 {
     background-color: #ed7d31;
     float: left;
 }
-#button3 {
+.button3 {
     background-color: #5b9bd5;
     float: left;
     clear: left;
 }
-#button4 {
+.button3New {
+    background-color: #5b9bd5;
+    float: left;
+}
+
+.button4 {
     background-color: #70ad47;
     float: left;
 }
@@ -66,15 +96,24 @@ body {
     padding: 20px 0;
 }
 
+.hidden{
+    display: none;
+}
+
 #blockButton, #cmdButton {
     margin: 0%;
     padding: 2px;
     float: right;
     width: 50px;
 }
-#padding {
+.padding {
     width: 10px;
 }
+
+.space{
+    height: 10px;
+}
+
 .inputs{
     display: flex;
     justify-content: center;
