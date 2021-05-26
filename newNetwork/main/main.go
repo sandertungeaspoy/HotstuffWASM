@@ -619,6 +619,7 @@ create:
 				// go ConnectionLeader()
 				// fmt.Println("Starting connection leader")
 				if msg.IsString {
+					fmt.Println(string(msg.Data))
 					if strings.TrimSpace(string(msg.Data)) == "StartConnectionLeader" {
 						go ConnectionLeader()
 					} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
@@ -639,6 +640,7 @@ create:
 						CreateChessBoard("spectate")
 					}
 				} else {
+					fmt.Println(string(msg.Data))
 					recvLock.Lock()
 					recvBytes = append(recvBytes, msg.Data)
 					recvLock.Unlock()
@@ -808,7 +810,7 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 		// go ConnectionLeader()
 		// fmt.Println("Starting connection leader")
 		if msg.IsString {
-			// fmt.Println(string(msg.Data))
+			fmt.Println(string(msg.Data))
 			if strings.TrimSpace(string(msg.Data)) == "StartConnectionLeader" {
 				go ConnectionLeader()
 			} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
@@ -829,6 +831,7 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 				CreateChessBoard("spectate")
 			}
 		} else {
+			fmt.Println(string(msg.Data))
 			recvLock.Lock()
 			recvBytes = append(recvBytes, msg.Data)
 			recvLock.Unlock()
