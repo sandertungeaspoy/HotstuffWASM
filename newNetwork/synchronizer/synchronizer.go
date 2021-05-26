@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"syscall/js"
 	"time"
 
 	hotstuff "github.com/HotstuffWASM/newNetwork"
@@ -69,6 +70,11 @@ func (s *Synchronizer) Start() {
 		// s.Proposal <- s.hs.Propose()
 		// s.PropDone = false
 		// fmt.Println("Proposed on channel")
+	}
+	document := js.Global().Get("document")
+	buttons := document.Call("getElementsByClassName", "disabledButtons")
+	for i := 0; i < buttons.Length(); i++ {
+		buttons.Index(i).Call("removeAttribute", "disabled")
 	}
 	s.timer = time.NewTimer(s.timeout)
 	// var ctx context.Context
