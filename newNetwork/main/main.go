@@ -1518,6 +1518,9 @@ func CreateChessBoard(color string) {
 
 	chess := document.Call("createElement", "script")
 	// chess.Call("setAttribute", "id", "chess")
+	// "var move = game.move({ from: source, to: target, promotion: 'q'});"+
+	// " game.undo(); "+
+	// " if (move === null) return 'snapback';"+
 	chess.Set("innerText", "var board = null; var game = new Chess();"+
 		"var $status = $('#status');"+
 		"var $fen = $('#fen');"+
@@ -1526,9 +1529,13 @@ func CreateChessBoard(color string) {
 		" if (game.game_over()) return false;"+
 		" if ((game.turn() === 'w' && role === 'black') || (game.turn() === 'b' && role === 'white' ) || (role === 'black' && piece.search(/^w/) !== -1) || (role === 'white' && piece.search(/^b/) !== -1) || (role === 'spectate')) {return false}};"+
 		" function onDrop (source, target) { "+
-		"var move = game.move({ from: source, to: target, promotion: 'q'});"+
-		" game.undo(); "+
-		" if (move === null) return 'snapback';"+
+		" var possibleMoves = game.moves({square: source});"+
+		" var allowed = false;"+
+		" for (i = 0; i < possibleMoves.length; i++) {"+
+		" if (possibleMoves[i].includes(target)) { "+
+		" allowed = true; break;};};"+
+		" if(allowed === false) { return 'snapback';};"+
+		"console.log('Allowed');"+
 		" document.getElementById(\"command\").value = \"chess\" + source + \"fromTo\" + target;"+
 		" GetCommand('command'); };"+
 		" function updateStatus () {"+
