@@ -27,7 +27,7 @@ type wasmServer struct {
 }
 
 var (
-	listen = flag.String("listen", "152.94.80.97:8080", "listen address")
+	listen = flag.String("listen", "192.168.50.113:8080", "listen address")
 	dir    = flag.String("dir", ".", "directory to serve")
 )
 
@@ -51,11 +51,11 @@ func main() {
 	flag.Parse()
 	log.Printf("listening on %q...", *listen)
 	go func() {
-		err := http.ListenAndServe("127.0.0.1:8080", http.FileServer(http.Dir(*dir)))
+		err := http.ListenAndServe("192.168.50.113:8080", http.FileServer(http.Dir(*dir)))
 		log.Fatalln(err)
 	}()
 
-	l2, err2 := net.Listen("tcp", "127.0.0.1:13372")
+	l2, err2 := net.Listen("tcp", "192.168.50.113:13372")
 	if err2 != nil {
 		fmt.Println(err2)
 	}
