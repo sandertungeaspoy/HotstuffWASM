@@ -577,7 +577,7 @@ func NewViewToString(view hotstuff.NewView) string {
 }
 
 func ConnectToPeer() (*webrtc.DataChannel, string) {
-create:
+	// create:
 	// Prepare the configuration
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
@@ -597,6 +597,10 @@ create:
 	// This will notify you when the peer has connected/disconnected
 	peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		fmt.Printf("ICE Connection State has changed: %s\n", connectionState.String())
+	})
+
+	peerConnection.OnICEGatheringStateChange(func() {
+		fmt.Println(peerConnection.ICEGatheringState())
 	})
 
 	// Register data channel creation handling
@@ -725,13 +729,15 @@ create:
 
 	<-gatherComplete
 
-	if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete && strings.Contains(peerConnection.LocalDescription().SDP, "c=IN IP4 0.0.0.0") {
-		// fmt.Println(peerConnection.LocalDescription().SDP)
-		DeliverAnswer(peerConnection.LocalDescription().SDP, senderID)
+	DeliverAnswer(peerConnection.LocalDescription().SDP, senderID)
 
-	} else if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete && !strings.Contains(peerConnection.LocalDescription().SDP, "c=IN IP4 0.0.0.0") {
-		goto create
-	}
+	// if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete && strings.Contains(peerConnection.LocalDescription().SDP, "c=IN IP4 0.0.0.0") {
+	// 	// fmt.Println(peerConnection.LocalDescription().SDP)
+	// 	DeliverAnswer(peerConnection.LocalDescription().SDP, senderID)
+
+	// } else if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete && !strings.Contains(peerConnection.LocalDescription().SDP, "c=IN IP4 0.0.0.0") {
+	// 	goto create
+	// }
 
 	<-waiter
 
@@ -767,6 +773,10 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 	// This will notify you when the peer has connected/disconnected
 	peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		fmt.Printf("ICE Connection State has changed: %s\n", connectionState.String())
+	})
+
+	peerConnection.OnICEGatheringStateChange(func() {
+		fmt.Println(peerConnection.ICEGatheringState())
 	})
 
 	waiter := make(chan struct{})
@@ -863,10 +873,7 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 
 	<-gatherComplete
 
-	if peerConnection.ICEGatheringState() == webrtc.ICEGatheringStateComplete {
-		// fmt.Println(peerConnection.LocalDescription().SDP)
-		DeliverOffer(peerConnection.LocalDescription().SDP)
-	}
+	DeliverOffer(peerConnection.LocalDescription().SDP)
 
 	answer := "empty"
 	senderID := ""
