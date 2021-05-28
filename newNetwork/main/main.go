@@ -270,6 +270,11 @@ func main() {
 				SendCommand(blockString)
 				sendLock.Unlock()
 				srv.Pm.PropDone = true
+			case cmd := <-incomingCmd:
+				cmdLock.Lock()
+				command := hotstuff.Command(cmd)
+				srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
+				cmdLock.Unlock()
 			case <-recieved:
 				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
@@ -1386,16 +1391,20 @@ func GetCommand(this js.Value, i []js.Value) interface{} {
 	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
 
 	cmd := string(value1)
-	cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
-	if serverID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
-		cmdLock.Lock()
-		command := hotstuff.Command(cmd)
-		srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
-		cmdLock.Unlock()
-		// srv.Pm.Proposal <- srv.Hs.Propose()
-	} else {
+	if cmd != "" {
+		cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
 		incomingCmd <- cmd
 	}
+	// cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
+	// if serverID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
+	// 	cmdLock.Lock()
+	// 	command := hotstuff.Command(cmd)
+	// 	srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
+	// 	cmdLock.Unlock()
+	// 	// srv.Pm.Proposal <- srv.Hs.Propose()
+	// } else {
+	// 	incomingCmd <- cmd
+	// }
 	return nil
 }
 
