@@ -614,7 +614,7 @@ func ConnectToPeer() (*webrtc.DataChannel, string) {
 
 		// Register channel opening handling
 		d.OnOpen(func() {
-			fmt.Printf("Data channel '%s'-'%d' open. Random messages will now be sent to any connected DataChannels every 5 seconds\n", d.Label(), d.ID())
+			fmt.Printf("Data channel '%s'-'%d' open.\n", d.Label(), d.ID())
 			// Register text message handling
 			d.OnMessage(func(msg webrtc.DataChannelMessage) {
 				// fmt.Printf("Message from DataChannel '%s': '%s'\n", d.Label(), string(msg.Data))
@@ -783,7 +783,7 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 
 	// Register channel opening handling
 	dataChannel.OnOpen(func() {
-		fmt.Printf("Data channel '%s'-'%d' open. Random messages will now be sent to any connected DataChannels every 5 seconds\n", dataChannel.Label(), dataChannel.ID())
+		fmt.Printf("Data channel '%s'-'%d' open.\n", dataChannel.Label(), dataChannel.ID())
 		close(waiter)
 		// for range time.NewTicker(5 * time.Second).C {
 		// 	message := "signal.RandSeq(15)"
