@@ -45,7 +45,8 @@ var peerMap map[hotstuff.ID]*webrtc.DataChannel
 var starter chan struct{}
 
 var start time.Time
-var blocks int
+
+// var blocks int
 
 func main() {
 	registerCallbacks()
@@ -64,13 +65,13 @@ func main() {
 		fmt.Println(serverID)
 		time.Sleep(1 * time.Second)
 	}
-	blockStr := js.Global().Get("document").Call("getElementById", "blocks").Get("value").String()
+	// blockStr := js.Global().Get("document").Call("getElementById", "blocks").Get("value").String()
 
-	blocks, _ = strconv.Atoi(blockStr)
-	fmt.Println(blocks)
-	if blocks == 0 {
-		blocks = 1000
-	}
+	// blocks, _ = strconv.Atoi(blockStr)
+	// fmt.Println(blocks)
+	// if blocks == 0 {
+	// 	blocks = 1000
+	// }
 	// CreateCommandList()
 
 	sendBytes = make([][]byte, 0)
@@ -196,6 +197,8 @@ func main() {
 		ID:   serverID,
 		Addr: addr[int(serverID)],
 		// Pm:        pm,
+		Chess:     false,
+		CurrCmd:   0,
 		Cfg:       cfg,
 		PubKey:    pubKey[serverID],
 		Cert:      cert[serverID],
@@ -203,6 +206,12 @@ func main() {
 		PrivKey:   privKey[int(serverID)],
 		SendBytes: sendBytes,
 		RecvBytes: recvBytes,
+	}
+
+	blockStr := js.Global().Get("document").Call("getElementById", "blocks").Get("value").String()
+	srv.MaxCmd, _ = strconv.Atoi(blockStr)
+	if srv.MaxCmd == 0 {
+		srv.MaxCmd = 1000
 	}
 
 	replicaConfig := config.NewConfig(serverID, srv.PrivKey)
@@ -239,6 +248,7 @@ func main() {
 	go EstablishConnections()
 	// restart:
 	for {
+		fmt.Println(srv.Chess)
 		if srv.Pm.GetLeader(hs.LastVote()) != srv.Pm.GetLeader(hs.LastVote()+1) {
 			if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
 				// fmt.Println("I am Leader")
@@ -270,6 +280,11 @@ func main() {
 				SendCommand(blockString)
 				sendLock.Unlock()
 				srv.Pm.PropDone = true
+			case cmd := <-incomingCmd:
+				cmdLock.Lock()
+				command := hotstuff.Command(cmd)
+				srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
+				cmdLock.Unlock()
 			case <-recieved:
 				recvLock.Lock()
 				newView := strings.Split(string(recvBytes[0]), ":")
@@ -326,9 +341,9 @@ func main() {
 			// 	fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
 			// 	start = time.Now()
 			// }
-			if srv.Pm.PropDone == true && srv.Hs.BlockChain().Len() == blocks {
+			if srv.Pm.PropDone == true && srv.CurrCmd == srv.MaxCmd && srv.Chess == false {
 				srv.Pm.Stop()
-				fmt.Printf("%v blocks took %v\n", blocks, time.Since(start))
+				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
 				return
 			}
@@ -405,9 +420,9 @@ func main() {
 			// 	fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
 			// 	start = time.Now()
 			// }
-			if srv.Hs.BlockChain().Len() == blocks {
+			if srv.CurrCmd == srv.MaxCmd && srv.Chess == false {
 				srv.Pm.Stop()
-				fmt.Printf("%v blocks took %v\n", blocks, time.Since(start))
+				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
 				return
 			}
@@ -638,9 +653,11 @@ func ConnectToPeer() (*webrtc.DataChannel, string) {
 					} else if strings.TrimSpace(string(msg.Data)) == "startChessWhite" {
 						// fmt.Println("Starting chess")
 						CreateChessBoard("white")
+						srv.Chess = true
 					} else if strings.TrimSpace(string(msg.Data)) == "startChessSpectate" {
 						// fmt.Println("Starting chess")
 						CreateChessBoard("spectate")
+						srv.Chess = true
 					}
 				} else {
 					recvLock.Lock()
@@ -834,9 +851,11 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 			} else if strings.TrimSpace(string(msg.Data)) == "startChessWhite" {
 				// fmt.Println("Starting chess")
 				CreateChessBoard("white")
+				srv.Chess = true
 			} else if strings.TrimSpace(string(msg.Data)) == "startChessSpectate" {
 				// fmt.Println("Starting chess")
 				CreateChessBoard("spectate")
+				srv.Chess = true
 			}
 		} else {
 			recvLock.Lock()
@@ -1314,8 +1333,7 @@ func GetSelfID(this js.Value, i []js.Value) interface{} {
 func GetBlockNumber(this js.Value, i []js.Value) interface{} {
 	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
 
-	blocks, _ = strconv.Atoi(value1)
-	fmt.Println(blocks)
+	srv.MaxCmd, _ = strconv.Atoi(value1)
 	return nil
 }
 
@@ -1386,16 +1404,20 @@ func GetCommand(this js.Value, i []js.Value) interface{} {
 	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
 
 	cmd := string(value1)
-	cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
-	if serverID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
-		cmdLock.Lock()
-		command := hotstuff.Command(cmd)
-		srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
-		cmdLock.Unlock()
-		// srv.Pm.Proposal <- srv.Hs.Propose()
-	} else {
+	if cmd != "" {
+		cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
 		incomingCmd <- cmd
 	}
+	// cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
+	// if serverID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
+	// 	cmdLock.Lock()
+	// 	command := hotstuff.Command(cmd)
+	// 	srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
+	// 	cmdLock.Unlock()
+	// 	// srv.Pm.Proposal <- srv.Hs.Propose()
+	// } else {
+	// 	incomingCmd <- cmd
+	// }
 	return nil
 }
 
@@ -1597,7 +1619,7 @@ func CreateChess(this js.Value, args []js.Value) interface{} {
 			SendStringTo("startChessSpectate", id)
 		}
 	}
-
+	srv.Chess = true
 	CreateChessBoard("black")
 	return nil
 }
