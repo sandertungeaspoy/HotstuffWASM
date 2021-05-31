@@ -29,6 +29,9 @@ type Server struct {
 	CertPEM   []byte
 	PrivKey   *ecdsa.PrivateKey
 	Cmds      CmdBuffer
+	Chess     bool
+	MaxCmd    int
+	CurrCmd   int
 	SendBytes [][]byte
 	RecvBytes [][]byte
 }
@@ -154,6 +157,7 @@ func (srv *Server) Exec(cmd hotstuff.Command) {
 	if strings.Contains(string(cmd), "chess") {
 		execChess(cmd)
 	}
+	srv.CurrCmd++
 	AppendCmd(string(cmd))
 	// if cmd == srv.Cmds.Cmds[0] {
 	// 	srv.Cmds.Cmds = srv.Cmds.Cmds[1:]
