@@ -1582,7 +1582,6 @@ func CreateChessBoard(color string) {
 		" if (possibleMoves[i].includes(target)) { "+
 		" allowed = true; break;};};"+
 		" if(allowed === false) { return 'snapback';};"+
-		"console.log('Allowed');"+
 		" document.getElementById(\"command\").value = \"chess\" + source + \"fromTo\" + target;"+
 		" GetCommand('command'); };"+
 		" function updateStatus () {"+
@@ -1601,7 +1600,7 @@ func CreateChessBoard(color string) {
 		"$pgn.html(game.pgn());"+
 		"board.position(game.fen())	  }; "+
 		"function onSnapEnd () {board.position(game.fen())};"+
-		" var config = {draggable: true,position: 'start',onDragStart: onDragStart,onDrop: onDrop, onSnapEnd: onSnapEnd};"+
+		" var config = {draggable: true,position: 'start',onDragStart: onDragStart,onDrop: onDrop, onSnapEnd: onSnapEnd, orientation: '"+color+"'};"+
 		"board = Chessboard('myBoard', config);	  "+
 		"updateStatus()")
 	document.Get("body").Call("appendChild", chess)
