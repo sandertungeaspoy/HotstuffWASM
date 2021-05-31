@@ -248,7 +248,7 @@ func main() {
 	go EstablishConnections()
 	// restart:
 	for {
-		fmt.Println(srv.Chess)
+		// fmt.Println(srv.Chess)
 		if srv.Pm.GetLeader(hs.LastVote()) != srv.Pm.GetLeader(hs.LastVote()+1) {
 			if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
 				// fmt.Println("I am Leader")
@@ -281,6 +281,8 @@ func main() {
 				sendLock.Unlock()
 				srv.Pm.PropDone = true
 			case cmd := <-incomingCmd:
+				// fmt.Println("Incoming cmd: ")
+				// fmt.Print(cmd)
 				cmdLock.Lock()
 				command := hotstuff.Command(cmd)
 				srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
@@ -304,19 +306,21 @@ func main() {
 					continue
 				}
 				recvLock.Lock()
-				cmd := strings.Split(string(recvBytes[0]), ":")
-				if cmd[0] == "Command" {
-					cmdString := cmd[1]
-					if len(recvBytes) > 1 {
-						recvBytes = recvBytes[1:]
-					} else {
-						recvBytes = make([][]byte, 0)
-					}
-					srv.Cmds.Cmds = append(srv.Cmds.Cmds, hotstuff.Command(cmdString))
-					// srv.Pm.Proposal <- srv.Hs.Propose()
-					recvLock.Unlock()
-					continue
-				}
+				// cmd := strings.Split(string(recvBytes[0]), ":")
+				// if cmd[0] == "Command" {
+				// 	cmdString := cmd[1]
+				// 	if len(recvBytes) > 1 {
+				// 		recvBytes = recvBytes[1:]
+				// 	} else {
+				// 		recvBytes = make([][]byte, 0)
+				// 	}
+				// 	cmdLock.Lock()
+				// 	srv.Cmds.Cmds = append(srv.Cmds.Cmds, hotstuff.Command(cmdString))
+				// 	cmdLock.Unlock()
+				// 	// srv.Pm.Proposal <- srv.Hs.Propose()
+				// 	recvLock.Unlock()
+				// 	continue
+				// }
 				recvLock.Unlock()
 				recvLock.Lock()
 				pc := StringToPartialCert(string(recvBytes[0]))
@@ -410,11 +414,10 @@ func main() {
 				SendCommand([]byte(msg))
 				sendLock.Unlock()
 			case cmd := <-incomingCmd:
-				cmdString := "Command:" + cmd
-
-				// fmt.Println("Sending command to leader...")
-				// sendBytes = append(sendBytes, []byte(cmdString))
-				SendCommand([]byte(cmdString))
+				cmdLock.Lock()
+				command := hotstuff.Command(cmd)
+				srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
+				cmdLock.Unlock()
 			}
 			// if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
 			// 	fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
@@ -1402,6 +1405,7 @@ func GetArraySize(this js.Value, args []js.Value) interface{} {
 // GetCommand gets the ID of the server
 func GetCommand(this js.Value, i []js.Value) interface{} {
 	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
+	fmt.Println(string(value1))
 
 	cmd := string(value1)
 	if cmd != "" {

@@ -179,7 +179,7 @@ func (cmdBuf *CmdBuffer) Accept(cmd hotstuff.Command) bool {
 	}
 	cmdBuf.mut.Lock()
 	defer cmdBuf.mut.Unlock()
-	fmt.Println(cmdBuf.Cmds)
+	// fmt.Println(cmdBuf.Cmds)
 
 	cmdString := strings.Split(string(cmd), "sNumber")
 	id, _ := strconv.ParseUint(cmdString[0], 10, 32)
@@ -226,7 +226,9 @@ func (cmdBuf *CmdBuffer) GetCommand() *hotstuff.Command {
 	if len(cmdBuf.Cmds) != 0 {
 		cmdBuf.mut.Lock()
 		cmd := cmdBuf.Cmds[0]
+		fmt.Println(cmdBuf.Cmds)
 		cmdBuf.Cmds = cmdBuf.Cmds[1:]
+		fmt.Println(cmdBuf.Cmds)
 		cmdBuf.mut.Unlock()
 		return &cmd
 	}
