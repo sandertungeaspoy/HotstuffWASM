@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"encoding/hex"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -178,6 +179,7 @@ func (cmdBuf *CmdBuffer) Accept(cmd hotstuff.Command) bool {
 	}
 	cmdBuf.mut.Lock()
 	defer cmdBuf.mut.Unlock()
+	fmt.Println(cmdBuf.Cmds)
 
 	cmdString := strings.Split(string(cmd), "sNumber")
 	id, _ := strconv.ParseUint(cmdString[0], 10, 32)
@@ -188,6 +190,7 @@ func (cmdBuf *CmdBuffer) Accept(cmd hotstuff.Command) bool {
 		oldID, _ := strconv.ParseUint(oldCmdString[0], 10, 32)
 		if serialNo := cmdBuf.serialNumbers[oldID]; serialNo >= serial {
 			// command is too old, can't accept
+			fmt.Println("Command not accepted")
 			return false
 		}
 

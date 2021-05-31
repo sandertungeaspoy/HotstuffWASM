@@ -40,13 +40,21 @@ type connMap struct {
 	completed   map[string]bool
 }
 
+type system struct {
+	inUseIDs []int
+	connMaps map[int]connMap
+}
+
 var connections connMap
+var systemMap system
 
 func main() {
 	connections.connections = make(map[string]net.Conn)
 	connections.answer = make(map[string]string)
 	connections.offer = make(map[string]string)
 	connections.completed = make(map[string]bool)
+	systemMap.inUseIDs = make([]int, 0)
+	systemMap.connMaps = make(map[int]connMap)
 
 	flag.Parse()
 	log.Printf("listening on %q...", *listen)

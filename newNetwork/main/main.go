@@ -702,11 +702,11 @@ func ConnectToPeer() (*webrtc.DataChannel, string) {
 			break
 		}
 
-		if attempts > 10 {
+		if attempts > 50 {
 			return nil, "error"
 		}
 		attempts++
-		time.Sleep(time.Millisecond * 5000)
+		time.Sleep(time.Millisecond * 500)
 	}
 
 	offersdp := webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: offer}
@@ -905,11 +905,11 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 		if answer != "empty" {
 			break
 		}
-		if attempts > 10 {
+		if attempts > 50 {
 			return nil, "error"
 		}
 		attempts++
-		time.Sleep(time.Millisecond * 5000)
+		time.Sleep(time.Millisecond * 500)
 	}
 
 	// fmt.Println(answer)
