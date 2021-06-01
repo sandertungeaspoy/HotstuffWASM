@@ -306,23 +306,6 @@ func main() {
 					continue
 				}
 				recvLock.Lock()
-				// cmd := strings.Split(string(recvBytes[0]), ":")
-				// if cmd[0] == "Command" {
-				// 	cmdString := cmd[1]
-				// 	if len(recvBytes) > 1 {
-				// 		recvBytes = recvBytes[1:]
-				// 	} else {
-				// 		recvBytes = make([][]byte, 0)
-				// 	}
-				// 	cmdLock.Lock()
-				// 	srv.Cmds.Cmds = append(srv.Cmds.Cmds, hotstuff.Command(cmdString))
-				// 	cmdLock.Unlock()
-				// 	// srv.Pm.Proposal <- srv.Hs.Propose()
-				// 	recvLock.Unlock()
-				// 	continue
-				// }
-				recvLock.Unlock()
-				recvLock.Lock()
 				pc := StringToPartialCert(string(recvBytes[0]))
 				if len(recvBytes) > 1 {
 					recvBytes = recvBytes[1:]
