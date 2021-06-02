@@ -115,7 +115,7 @@ func (s *Synchronizer) beat() {
 	s.mut.Unlock()
 	go func() {
 		s.PropDone = false
-		fmt.Println("Proposing")
+		// fmt.Println("Proposing")
 		s.Proposal <- s.hs.Propose()
 	}()
 }

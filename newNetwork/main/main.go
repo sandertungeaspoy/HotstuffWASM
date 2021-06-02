@@ -45,12 +45,13 @@ var peerMap map[hotstuff.ID]*webrtc.DataChannel
 var starter chan struct{}
 
 var start time.Time
+var timeSlice []time.Duration
 
 // var blocks int
 
 func main() {
 	registerCallbacks()
-
+	timeSlice = make([]time.Duration, 0)
 	peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
 	serverID = hotstuff.ID(0)
 	value1 := js.Global().Get("document").Call("getElementById", "self-id").Get("innerText").String()
@@ -324,14 +325,17 @@ func main() {
 				SendCommand([]byte(msgString))
 				sendLock.Unlock()
 			}
-			// if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
-			// 	fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
-			// 	start = time.Now()
-			// }
+			if srv.CurrCmd%50 == 0 && srv.CurrCmd != 0 {
+				tempTime := time.Since(start)
+				// fmt.Printf("%s took %v\n", "50 blocks", tempTime)
+				timeSlice = append(timeSlice, tempTime)
+				start = time.Now()
+			}
 			if srv.Pm.PropDone == true && srv.CurrCmd == srv.MaxCmd && srv.Chess == false {
 				srv.Pm.Stop()
 				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
+				fmt.Println(timeSlice)
 				return
 			}
 
@@ -402,14 +406,17 @@ func main() {
 				srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
 				cmdLock.Unlock()
 			}
-			// if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
-			// 	fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
-			// 	start = time.Now()
-			// }
+			if srv.CurrCmd%50 == 0 && srv.CurrCmd != 0 {
+				tempTime := time.Since(start)
+				// fmt.Printf("%s took %v\n", "50 blocks", tempTime)
+				timeSlice = append(timeSlice, tempTime)
+				start = time.Now()
+			}
 			if srv.CurrCmd == srv.MaxCmd && srv.Chess == false {
 				srv.Pm.Stop()
 				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
+				fmt.Println(timeSlice)
 				return
 			}
 

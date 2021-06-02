@@ -159,7 +159,11 @@ func (srv *Server) Exec(cmd hotstuff.Command) {
 		execChess(cmd)
 	}
 	srv.CurrCmd++
-	AppendCmd(string(cmd))
+
+	if srv.CurrCmd%50 == 0 {
+		AppendCmd(string(cmd))
+	}
+	// AppendCmd(string(cmd))
 	// if cmd == srv.Cmds.Cmds[0] {
 	// 	srv.Cmds.Cmds = srv.Cmds.Cmds[1:]
 	// }
