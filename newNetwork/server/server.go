@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	hotstuff "github.com/HotstuffWASM/newNetwork"
 	"github.com/HotstuffWASM/newNetwork/config"
@@ -34,6 +35,8 @@ type Server struct {
 	CurrCmd   int
 	SendBytes [][]byte
 	RecvBytes [][]byte
+	StartTime time.Time
+	TimeSlice []time.Duration
 }
 
 // NewServer creates a new Server.
@@ -158,8 +161,14 @@ func (srv *Server) Exec(cmd hotstuff.Command) {
 		// execChess(cmd)
 	}
 	srv.CurrCmd++
+	if srv.CurrCmd%50 == 0 || srv.CurrCmd == 1 {
+		tempTime := time.Since(srv.StartTime)
+		srv.TimeSlice = append(srv.TimeSlice, tempTime)
+		srv.StartTime = time.Now()
+		fmt.Println(string(cmd))
+	}
 	// AppendCmd(string(cmd))
-	fmt.Println(string(cmd))
+	// fmt.Println(string(cmd))
 	// if cmd == srv.Cmds.Cmds[0] {
 	// 	srv.Cmds.Cmds = srv.Cmds.Cmds[1:]
 	// }

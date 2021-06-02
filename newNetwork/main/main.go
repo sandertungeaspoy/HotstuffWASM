@@ -249,17 +249,19 @@ func main() {
 
 	// srv.Pm.Start()
 
-	go EstablishConnections()
+	EstablishConnections()
+	srv.StartTime = time.Now()
+	srv.TimeSlice = make([]time.Duration, 0)
 	// restart:
 	for {
 		// fmt.Println(srv.Chess)
-		if srv.Pm.GetLeader(hs.LastVote()) != srv.Pm.GetLeader(hs.LastVote()+1) {
-			if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
-				// fmt.Println("I am Leader")
-			} else {
-				// fmt.Println("I am Normal Replica")
-			}
-		}
+		// if srv.Pm.GetLeader(hs.LastVote()) != srv.Pm.GetLeader(hs.LastVote()+1) {
+		// 	if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
+		// 		// fmt.Println("I am Leader")
+		// 	} else {
+		// 		// fmt.Println("I am Normal Replica")
+		// 	}
+		// }
 		if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
 			select {
 			case msgByte := <-srv.Pm.Proposal:
@@ -633,12 +635,12 @@ func ConnectToPeer() (*webrtc.DataChannel, string) {
 					} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
 						if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 							srv.Pm.Start()
-							start = time.Now()
-							srv.Pm.Proposal <- srv.Hs.Propose()
+							// start = time.Now()
+							// srv.Pm.Proposal <- srv.Hs.Propose()
 							srv.Pm.PropDone = false
 						} else {
 							srv.Pm.Start()
-							start = time.Now()
+							// start = time.Now()
 						}
 					} else if strings.TrimSpace(string(msg.Data)) == "startChessWhite" {
 						// fmt.Println("Starting chess")
@@ -831,12 +833,12 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 			} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
 				if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 					srv.Pm.Start()
-					start = time.Now()
-					srv.Pm.Proposal <- srv.Hs.Propose()
+					// start = time.Now()
+					// srv.Pm.Proposal <- srv.Hs.Propose()
 					srv.Pm.PropDone = false
 				} else {
 					srv.Pm.Start()
-					start = time.Now()
+					// start = time.Now()
 				}
 			} else if strings.TrimSpace(string(msg.Data)) == "startChessWhite" {
 				// fmt.Println("Starting chess")
@@ -924,7 +926,7 @@ func DeliverOffer(offer string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
 	if err != nil {
 		return
 	}
@@ -943,7 +945,7 @@ func DeliverAnswer(answer string, senderID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
 	if err != nil {
 		return
 	}
@@ -962,7 +964,7 @@ func ReceiveOffer() (string, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
 	if err != nil {
 		return "error", "Websocket"
 	}
@@ -990,7 +992,7 @@ func ReceiveAnswer() (string, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
 	if err != nil {
 		return "error", "Websocket"
 	}
@@ -1019,7 +1021,7 @@ func RemoveOffer() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1038,7 +1040,7 @@ func removeAnswer(senderID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1055,7 +1057,7 @@ func purgeWebRTCDatabase() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://127.0.0.1:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1159,7 +1161,7 @@ func EstablishConnections() {
 					SendStringTo("StartWasmStuff", hotstuff.ID(0))
 					srv.Pm.Start()
 					// CreateChessGame()
-					start = time.Now()
+					// start = time.Now()
 					purgeWebRTCDatabase()
 					started = true
 					break

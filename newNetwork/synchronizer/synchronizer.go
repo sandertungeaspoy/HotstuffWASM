@@ -66,9 +66,9 @@ func (s *Synchronizer) Init(hs hotstuff.Consensus) {
 
 // Start starts the synchronizer.
 func (s *Synchronizer) Start() {
-	if s.GetLeader(s.hs.Leaf().GetView()+1) == s.hs.Config().ID() {
+	if s.GetLeader(s.hs.LastVote()+1) == s.hs.Config().ID() {
 		// fmt.Println("Proposing")
-		// s.Proposal <- s.hs.Propose()
+		s.Proposal <- s.hs.Propose()
 		// s.PropDone = false
 		// fmt.Println("Proposed on channel")
 	}
