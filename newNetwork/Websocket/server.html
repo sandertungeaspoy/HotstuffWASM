@@ -152,7 +152,7 @@
         //   }, 5000);
 
         function restartWebRTCHandler() {
-            var wsRestart = new WebSocket("ws://127.0.0.1:13372");
+            var wsRestart = new WebSocket("ws://85.165.212.251:13372");
             wsRestart.onopen = function() {
                 wsRestart.send("setup:purgeDatabase\n&0%");
                 console.log("Web RTC Handler restarted!");
