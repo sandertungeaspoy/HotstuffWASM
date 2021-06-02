@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"syscall/js"
+	"time"
 
 	hotstuff "github.com/HotstuffWASM/newNetwork"
 	"github.com/HotstuffWASM/newNetwork/config"
@@ -35,6 +36,8 @@ type Server struct {
 	CurrCmd   int
 	SendBytes [][]byte
 	RecvBytes [][]byte
+	StartTime time.Time
+	TimeSlice []time.Duration
 }
 
 // NewServer creates a new Server.
@@ -159,7 +162,12 @@ func (srv *Server) Exec(cmd hotstuff.Command) {
 		execChess(cmd)
 	}
 	srv.CurrCmd++
-
+	if srv.CurrCmd%50 == 0 && srv.CurrCmd != 0 {
+		tempTime := time.Since(srv.StartTime)
+		// fmt.Printf("%s took %v\n", "50 blocks", tempTime)
+		srv.TimeSlice = append(srv.TimeSlice, tempTime)
+		srv.StartTime = time.Now()
+	}
 	if srv.CurrCmd%50 == 0 {
 		AppendCmd(string(cmd))
 	}

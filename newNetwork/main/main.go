@@ -43,15 +43,13 @@ var cmdLock sync.Mutex
 var peerMap map[hotstuff.ID]*webrtc.DataChannel
 
 var starter chan struct{}
-
 var start time.Time
-var timeSlice []time.Duration
 
 // var blocks int
 
 func main() {
 	registerCallbacks()
-	timeSlice = make([]time.Duration, 0)
+
 	peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
 	serverID = hotstuff.ID(0)
 	value1 := js.Global().Get("document").Call("getElementById", "self-id").Get("innerText").String()
@@ -248,15 +246,18 @@ func main() {
 
 	EstablishConnections()
 	// restart:
+	srv.TimeSlice = make([]time.Duration, 0)
+	srv.StartTime = time.Now()
+	start = time.Now()
 	for {
 		// fmt.Println(srv.Chess)
-		if srv.Pm.GetLeader(hs.LastVote()) != srv.Pm.GetLeader(hs.LastVote()+1) {
-			if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
-				// fmt.Println("I am Leader")
-			} else {
-				// fmt.Println("I am Normal Replica")
-			}
-		}
+		// if srv.Pm.GetLeader(hs.LastVote()) != srv.Pm.GetLeader(hs.LastVote()+1) {
+		// 	if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
+		// 		// fmt.Println("I am Leader")
+		// 	} else {
+		// 		// fmt.Println("I am Normal Replica")
+		// 	}
+		// }
 		if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
 			select {
 			case msgByte := <-srv.Pm.Proposal:
@@ -325,17 +326,17 @@ func main() {
 				SendCommand([]byte(msgString))
 				sendLock.Unlock()
 			}
-			if srv.CurrCmd%50 == 0 && srv.CurrCmd != 0 {
-				tempTime := time.Since(start)
-				// fmt.Printf("%s took %v\n", "50 blocks", tempTime)
-				timeSlice = append(timeSlice, tempTime)
-				start = time.Now()
-			}
+			// if srv.CurrCmd%50 == 0 && srv.CurrCmd != 0 {
+			// 	tempTime := time.Since(start)
+			// 	// fmt.Printf("%s took %v\n", "50 blocks", tempTime)
+			// 	timeSlice = append(timeSlice, tempTime)
+			// 	start = time.Now()
+			// }
 			if srv.Pm.PropDone == true && srv.CurrCmd == srv.MaxCmd && srv.Chess == false {
 				srv.Pm.Stop()
 				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
-				fmt.Println(timeSlice)
+				fmt.Println(srv.TimeSlice)
 				return
 			}
 
@@ -406,17 +407,17 @@ func main() {
 				srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
 				cmdLock.Unlock()
 			}
-			if srv.CurrCmd%50 == 0 && srv.CurrCmd != 0 {
-				tempTime := time.Since(start)
-				// fmt.Printf("%s took %v\n", "50 blocks", tempTime)
-				timeSlice = append(timeSlice, tempTime)
-				start = time.Now()
-			}
+			// if srv.CurrCmd%50 == 0 && srv.CurrCmd != 0 {
+			// 	tempTime := time.Since(start)
+			// 	// fmt.Printf("%s took %v\n", "50 blocks", tempTime)
+			// 	timeSlice = append(timeSlice, tempTime)
+			// 	start = time.Now()
+			// }
 			if srv.CurrCmd == srv.MaxCmd && srv.Chess == false {
 				srv.Pm.Stop()
 				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
-				fmt.Println(timeSlice)
+				fmt.Println(srv.TimeSlice)
 				return
 			}
 
