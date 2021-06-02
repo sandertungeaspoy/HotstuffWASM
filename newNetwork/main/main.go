@@ -246,7 +246,7 @@ func main() {
 
 	// srv.Pm.Start()
 
-	go EstablishConnections()
+	EstablishConnections()
 	// restart:
 	for {
 		// fmt.Println(srv.Chess)
