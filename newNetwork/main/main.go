@@ -245,17 +245,17 @@ func main() {
 
 	// srv.Pm.Start()
 
-	go EstablishConnections()
+	EstablishConnections()
 	// restart:
 	for {
 		// fmt.Println(srv.Chess)
-		if srv.Pm.GetLeader(hs.LastVote()) != srv.Pm.GetLeader(hs.LastVote()+1) {
-			if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
-				// fmt.Println("I am Leader")
-			} else {
-				// fmt.Println("I am Normal Replica")
-			}
-		}
+		// if srv.Pm.GetLeader(hs.LastVote()) != srv.Pm.GetLeader(hs.LastVote()+1) {
+		// 	if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
+		// 		fmt.Println("I am Leader")
+		// 	} else {
+		// 		// fmt.Println("I am Normal Replica")
+		// 	}
+		// }
 		if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
 			select {
 			case msgByte := <-srv.Pm.Proposal:
@@ -630,7 +630,7 @@ func ConnectToPeer() (*webrtc.DataChannel, string) {
 						if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 							srv.Pm.Start()
 							start = time.Now()
-							srv.Pm.Proposal <- srv.Hs.Propose()
+							// srv.Pm.Proposal <- srv.Hs.Propose()
 							srv.Pm.PropDone = false
 						} else {
 							srv.Pm.Start()
@@ -828,7 +828,7 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 				if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 					srv.Pm.Start()
 					start = time.Now()
-					srv.Pm.Proposal <- srv.Hs.Propose()
+					// srv.Pm.Proposal <- srv.Hs.Propose()
 					srv.Pm.PropDone = false
 				} else {
 					srv.Pm.Start()
