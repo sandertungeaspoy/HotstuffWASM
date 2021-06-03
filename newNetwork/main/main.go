@@ -257,6 +257,7 @@ func main() {
 	// restart:
 	for {
 		if started {
+			fmt.Println("Starting...")
 			break
 		}
 	}
