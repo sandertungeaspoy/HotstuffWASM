@@ -48,11 +48,13 @@ var peerMap map[hotstuff.ID]*webrtc.DataChannel
 
 var start time.Time
 
+var started bool
+
 // var blocks int
 
 func main() {
 	// registerCallbacks()
-
+	started = false
 	peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
 	serverID = hotstuff.ID(0)
 	// value1 := js.Global().Get("document").Call("getElementById", "self-id").Get("innerText").String()
@@ -253,6 +255,11 @@ func main() {
 	srv.StartTime = time.Now()
 	srv.TimeSlice = make([]time.Duration, 0)
 	// restart:
+	for {
+		if started {
+			break
+		}
+	}
 	for {
 		// fmt.Println(srv.Chess)
 		// if srv.Pm.GetLeader(hs.LastVote()) != srv.Pm.GetLeader(hs.LastVote()+1) {
@@ -638,10 +645,12 @@ func ConnectToPeer() (*webrtc.DataChannel, string) {
 						if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 							srv.Pm.Start()
 							// start = time.Now()
+							started = true
 							// srv.Pm.Proposal <- srv.Hs.Propose()
 							srv.Pm.PropDone = false
 						} else {
 							srv.Pm.Start()
+							started = true
 							// start = time.Now()
 						}
 					} else if strings.TrimSpace(string(msg.Data)) == "startChessWhite" {
@@ -835,11 +844,13 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 			} else if strings.TrimSpace(string(msg.Data)) == "StartWasmStuff" {
 				if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 					srv.Pm.Start()
+					started = true
 					// start = time.Now()
 					// srv.Pm.Proposal <- srv.Hs.Propose()
 					srv.Pm.PropDone = false
 				} else {
 					srv.Pm.Start()
+					started = true
 					// start = time.Now()
 				}
 			} else if strings.TrimSpace(string(msg.Data)) == "startChessWhite" {
@@ -1162,6 +1173,7 @@ func EstablishConnections() {
 				if len(peerMap) == 3 && !started {
 					SendStringTo("StartWasmStuff", hotstuff.ID(0))
 					srv.Pm.Start()
+					started = true
 					// CreateChessGame()
 					// start = time.Now()
 					purgeWebRTCDatabase()
