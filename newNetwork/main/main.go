@@ -234,7 +234,7 @@ func main() {
 
 	// Round robin
 	leaderrotation := leaderrotation.NewRoundRobin(srv.Cfg)
-	pm := synchronizer.New(leaderrotation, time.Duration(50)*time.Second, time.Duration(10)*time.Second)
+	pm := synchronizer.New(leaderrotation, time.Duration(50)*time.Second, time.Duration(2)*time.Second)
 	srv.Pm = pm
 
 	hs := consensus.Builder{
@@ -430,10 +430,10 @@ func main() {
 			}
 
 		}
-		if srv.CurrCmd == srv.MaxCmd-1 {
-			fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
-			fmt.Println(srv.TimeSlice)
-		}
+		// if srv.CurrCmd == srv.MaxCmd-1 {
+		// 	fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
+		// 	fmt.Println(srv.TimeSlice)
+		// }
 
 	}
 
@@ -1099,7 +1099,7 @@ func EstablishConnections() {
 	if srv.ID == hotstuff.ID(1) {
 		for {
 			if len(peerMap) == 3 {
-				time.Sleep(time.Second * 20)
+				// time.Sleep(time.Second * 20)
 				break
 			}
 
@@ -1139,7 +1139,7 @@ func EstablishConnections() {
 				// srv.Pm.Start()
 				break
 			}
-			time.Sleep(time.Second * 5)
+			// time.Sleep(time.Second * 5)
 		}
 	} else if srv.ID == hotstuff.ID(3) {
 
@@ -1160,7 +1160,7 @@ func EstablishConnections() {
 			} else {
 				break
 			}
-			time.Sleep(time.Second * 5)
+			// time.Sleep(time.Second * 5)
 		}
 	} else if srv.ID == hotstuff.ID(4) {
 		for {
@@ -1188,7 +1188,7 @@ func EstablishConnections() {
 					break
 				}
 			}
-			time.Sleep(time.Second * 5)
+			// time.Sleep(time.Second * 5)
 		}
 	}
 
