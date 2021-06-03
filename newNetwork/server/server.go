@@ -167,6 +167,7 @@ func (srv *Server) Exec(cmd hotstuff.Command) {
 		srv.StartTime = time.Now()
 		fmt.Println(string(cmd))
 	}
+	srv.Pm.InitialTimeout = time.Duration(2) * time.Second
 	// AppendCmd(string(cmd))
 	// fmt.Println(string(cmd))
 	// if cmd == srv.Cmds.Cmds[0] {

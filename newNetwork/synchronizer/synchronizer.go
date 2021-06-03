@@ -20,7 +20,6 @@ type Synchronizer struct {
 	mut            sync.Mutex
 	lastBeat       hotstuff.View
 	InitialTimeout time.Duration
-	timeout        time.Duration
 	timer          *time.Timer
 	stop           context.CancelFunc
 	hs             hotstuff.Consensus
@@ -31,11 +30,10 @@ type Synchronizer struct {
 }
 
 // New creates a new Synchronizer.
-func New(leaderRotation hotstuff.LeaderRotation, initialTimeout time.Duration, timeout time.Duration) *Synchronizer {
+func New(leaderRotation hotstuff.LeaderRotation, timeout time.Duration) *Synchronizer {
 	return &Synchronizer{
 		LeaderRotation: leaderRotation,
-		InitialTimeout: initialTimeout,
-		timeout:        timeout,
+		InitialTimeout: timeout,
 		Proposal:       make(chan []byte, 16),
 		NewView:        make(chan bool, 2),
 	}
@@ -46,7 +44,7 @@ func (s *Synchronizer) OnPropose() {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	if s.timer != nil {
-		s.timer.Reset(s.timeout)
+		s.timer.Reset(s.InitialTimeout)
 	}
 }
 
@@ -118,7 +116,7 @@ func (s *Synchronizer) beat() {
 	s.mut.Unlock()
 	go func() {
 		s.PropDone = false
-		fmt.Println("Proposing")
+		// fmt.Println("Proposing")
 		s.Proposal <- s.hs.Propose()
 	}()
 }
@@ -144,7 +142,7 @@ func (s *Synchronizer) newViewTimeout() {
 			s.NewView <- true
 			fmt.Println("Resetting timer...")
 			s.mut.Lock()
-			s.timer.Reset(s.timeout)
+			s.timer.Reset(s.InitialTimeout)
 			s.mut.Unlock()
 		}
 	}
