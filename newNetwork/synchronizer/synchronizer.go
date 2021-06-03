@@ -17,23 +17,25 @@ import (
 type Synchronizer struct {
 	hotstuff.LeaderRotation
 
-	mut      sync.Mutex
-	lastBeat hotstuff.View
-	timeout  time.Duration
-	timer    *time.Timer
-	stop     context.CancelFunc
-	hs       hotstuff.Consensus
-	stopped  bool
-	Proposal chan []byte
-	NewView  chan bool
-	PropDone bool
+	mut            sync.Mutex
+	lastBeat       hotstuff.View
+	InitialTimeout time.Duration
+	timeout        time.Duration
+	timer          *time.Timer
+	stop           context.CancelFunc
+	hs             hotstuff.Consensus
+	stopped        bool
+	Proposal       chan []byte
+	NewView        chan bool
+	PropDone       bool
 }
 
 // New creates a new Synchronizer.
-func New(leaderRotation hotstuff.LeaderRotation, initialTimeout time.Duration) *Synchronizer {
+func New(leaderRotation hotstuff.LeaderRotation, initialTimeout time.Duration, timeout time.Duration) *Synchronizer {
 	return &Synchronizer{
 		LeaderRotation: leaderRotation,
-		timeout:        initialTimeout,
+		InitialTimeout: initialTimeout,
+		timeout:        timeout,
 		Proposal:       make(chan []byte, 16),
 		NewView:        make(chan bool, 2),
 	}
@@ -77,7 +79,7 @@ func (s *Synchronizer) Start() {
 	// for i := 0; i < buttons.Length(); i++ {
 	// buttons.Index(i).Call("removeAttribute", "disabled")
 	// }
-	s.timer = time.NewTimer(s.timeout)
+	s.timer = time.NewTimer(s.InitialTimeout)
 	// var ctx context.Context
 	// ctx, s.stop = context.WithCancel(context.Background())
 	go func() {
