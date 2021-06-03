@@ -232,7 +232,7 @@ func main() {
 
 	// Round robin
 	leaderrotation := leaderrotation.NewRoundRobin(srv.Cfg)
-	pm := synchronizer.New(leaderrotation, time.Duration(50)*time.Second)
+	pm := synchronizer.New(leaderrotation, time.Duration(2)*time.Second)
 	srv.Pm = pm
 
 	hs := consensus.Builder{
