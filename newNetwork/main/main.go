@@ -338,6 +338,7 @@ func main() {
 				srv.Pm.Stop()
 				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
+				fmt.Println(srv.TimeSlice)
 				return
 			}
 
@@ -416,6 +417,7 @@ func main() {
 				srv.Pm.Stop()
 				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
+				fmt.Println(srv.TimeSlice)
 				return
 			}
 
