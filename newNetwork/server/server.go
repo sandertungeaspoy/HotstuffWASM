@@ -162,7 +162,7 @@ func (srv *Server) Exec(cmd hotstuff.Command) {
 		execChess(cmd)
 	}
 	srv.CurrCmd++
-	if srv.CurrCmd%50 == 0 && srv.CurrCmd != 0 {
+	if srv.CurrCmd%50 == 0 || srv.CurrCmd == 1 {
 		tempTime := time.Since(srv.StartTime)
 		// fmt.Printf("%s took %v\n", "50 blocks", tempTime)
 		srv.TimeSlice = append(srv.TimeSlice, tempTime)
@@ -171,6 +171,7 @@ func (srv *Server) Exec(cmd hotstuff.Command) {
 	if srv.CurrCmd%50 == 0 {
 		AppendCmd(string(cmd))
 	}
+
 	// AppendCmd(string(cmd))
 	// if cmd == srv.Cmds.Cmds[0] {
 	// 	srv.Cmds.Cmds = srv.Cmds.Cmds[1:]
