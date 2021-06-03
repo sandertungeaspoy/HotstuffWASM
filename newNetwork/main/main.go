@@ -234,7 +234,7 @@ func main() {
 
 	// Round robin
 	leaderrotation := leaderrotation.NewRoundRobin(srv.Cfg)
-	pm := synchronizer.New(leaderrotation, time.Duration(50)*time.Second, time.Duration(2)*time.Second)
+	pm := synchronizer.New(leaderrotation, time.Duration(50)*time.Second, time.Duration(10)*time.Second)
 	srv.Pm = pm
 
 	hs := consensus.Builder{
@@ -430,9 +430,12 @@ func main() {
 			}
 
 		}
+		if srv.CurrCmd == srv.MaxCmd-1 {
+			fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
+			fmt.Println(srv.TimeSlice)
+		}
+
 	}
-	fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
-	fmt.Println(srv.TimeSlice)
 
 	// fmt.Println("Waiting to restart")
 	// for {
