@@ -1086,7 +1086,7 @@ func purgeWebRTCDatabase() {
 
 func EstablishConnections() {
 
-	started := false
+	// started := false
 	serverConID := 1
 	// leader := false
 
@@ -1178,7 +1178,7 @@ func EstablishConnections() {
 					// CreateChessGame()
 					// start = time.Now()
 					purgeWebRTCDatabase()
-					started = true
+					// started = true
 					break
 				}
 			}
