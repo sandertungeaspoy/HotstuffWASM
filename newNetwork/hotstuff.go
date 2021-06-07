@@ -1,6 +1,6 @@
 // Package hotstuffwasm defines the core types and interfaces that implement the HotStuff protocol.
 // These interfaces allow us to split the implementations into different modules,
-// and each module can have multiple can have multiple implementations.
+// and each module can have multiple implementations.
 //
 // The following diagram illustrates the relationships between these interfaces:
 //
