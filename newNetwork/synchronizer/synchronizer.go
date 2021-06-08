@@ -68,7 +68,7 @@ func (s *Synchronizer) Start() {
 	if s.GetLeader(s.hs.LastVote()+1) == s.hs.Config().ID() {
 		fmt.Println("Proposing")
 		s.Proposal <- s.hs.Propose()
-		// s.PropDone = false
+		s.PropDone = false
 		// fmt.Println("Proposed on channel")
 	}
 	// document := js.Global().Get("document")
@@ -109,6 +109,7 @@ func (s *Synchronizer) beat() {
 	}
 	if s.GetLeader(view+1) != s.hs.Config().ID() {
 		s.mut.Unlock()
+		fmt.Println("Error 33")
 		return
 	}
 	s.lastBeat = view

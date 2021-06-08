@@ -73,6 +73,7 @@ func (srv *Server) GetID(msg []byte) (hotstuff.ID, error) {
 	msgStrings := strings.Split(msgFromByte, " ")
 	id, err := strconv.ParseUint(msgStrings[1], 10, 32)
 	if err != nil {
+		fmt.Println("Error 31")
 		return hotstuff.ID(0), err
 	}
 	return hotstuff.ID(id), err
@@ -129,6 +130,7 @@ func (srv *Server) Fetch(hash *hotstuff.Hash) {
 
 	block, ok := srv.Hs.BlockChain().Get(*hash)
 	if !ok {
+		fmt.Println("Error 32")
 		return
 	}
 

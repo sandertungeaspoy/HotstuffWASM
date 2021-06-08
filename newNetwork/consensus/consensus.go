@@ -52,6 +52,7 @@ func (hs *chainedhotstuff) init() {
 	hs.bLeaf = hotstuff.GetGenesis()
 	hs.highQC, err = hs.signer.CreateQuorumCert(hotstuff.GetGenesis(), []hotstuff.PartialCert{})
 	if err != nil {
+		fmt.Println("Error 11")
 		// logger.Panicf("Failed to create QC for genesis block!")
 	}
 	hs.blocks.Store(hotstuff.GetGenesis())
@@ -111,6 +112,7 @@ func (hs *chainedhotstuff) updateHighQC(qc hotstuff.QuorumCert) {
 	if !hs.verifier.VerifyQuorumCert(qc) {
 		// logger.Info("updateHighQC: QC could not be verified!")
 		// fmt.Println("updateHighQC: QC could not be verified!")
+		fmt.Println("Error 12")
 		return
 	}
 
@@ -118,11 +120,13 @@ func (hs *chainedhotstuff) updateHighQC(qc hotstuff.QuorumCert) {
 	if !ok {
 		// logger.Info("updateHighQC: Could not find block referenced by new QC!")
 		// fmt.Println("updateHighQC: Could not find block referenced by new QC!")
+		fmt.Println("Error 13")
 		return
 	}
 
 	oldBlock, ok := hs.blocks.Get(hs.highQC.BlockHash())
 	if !ok {
+		fmt.Println("Error 14")
 		// logger.Panic("Block from the old highQC missing from chain")
 		// fmt.Println("Block from the old highQC missing from chain")
 	}
@@ -140,6 +144,7 @@ func (hs *chainedhotstuff) commit(block *hotstuff.Block) {
 		}
 		if block.QuorumCert() == nil {
 			// don't execute dummy nodes
+			fmt.Println("Error 15")
 			return
 		}
 		// logger.Debug("EXEC: ", block)
@@ -149,6 +154,7 @@ func (hs *chainedhotstuff) commit(block *hotstuff.Block) {
 
 func (hs *chainedhotstuff) qcRef(qc hotstuff.QuorumCert) (*hotstuff.Block, bool) {
 	if qc == nil {
+		fmt.Println("Error 16")
 		return nil, false
 	}
 	return hs.blocks.Get(qc.BlockHash())
@@ -157,6 +163,7 @@ func (hs *chainedhotstuff) qcRef(qc hotstuff.QuorumCert) (*hotstuff.Block, bool)
 func (hs *chainedhotstuff) update(block *hotstuff.Block) {
 	block1, ok := hs.qcRef(block.QuorumCert())
 	if !ok {
+		fmt.Println("Error 17")
 		return
 	}
 
@@ -165,6 +172,7 @@ func (hs *chainedhotstuff) update(block *hotstuff.Block) {
 
 	block2, ok := hs.qcRef(block1.QuorumCert())
 	if !ok {
+		fmt.Println("Error 18")
 		return
 	}
 
@@ -175,6 +183,7 @@ func (hs *chainedhotstuff) update(block *hotstuff.Block) {
 
 	block3, ok := hs.qcRef(block2.QuorumCert())
 	if !ok {
+		fmt.Println("Error 19")
 		return
 	}
 
@@ -275,6 +284,7 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 	if block.GetView() <= hs.lastVote {
 		hs.mut.Unlock()
 		// logger.Info("OnPropose: block view was less than our view")
+		fmt.Println("Error 20")
 		return "", errors.New("OnPropose: block view was less than our view")
 	}
 

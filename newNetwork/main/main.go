@@ -264,11 +264,13 @@ func main() {
 			select {
 			case msgByte := <-srv.Pm.Proposal:
 				if msgByte == nil {
+					fmt.Println("Error 26")
 					continue
 				}
 				senderID, cmd, obj := FormatBytes(msgByte)
 				blockString := msgByte
 				if senderID != srv.ID && cmd != "Propose" {
+					fmt.Println("Error 27")
 					continue
 				}
 				block := StringToBlock(obj)
@@ -375,6 +377,7 @@ func main() {
 				// fmt.Print("RecvBytes: ")
 				// fmt.Println(recvBytes)
 				if id == hotstuff.ID(0) || cmd != "Propose" {
+					fmt.Println("Error 28")
 					continue
 				}
 				block := StringToBlock(obj)
@@ -447,6 +450,7 @@ func FormatBytes(msg []byte) (id hotstuff.ID, cmd string, obj string) {
 		msgString := string(msg)
 		msgStringByte := strings.Split(msgString, ";")
 		if len(msgStringByte) == 1 {
+			fmt.Println("Error 29")
 			return hotstuff.ID(0), "", ""
 		}
 
@@ -459,6 +463,7 @@ func FormatBytes(msg []byte) (id hotstuff.ID, cmd string, obj string) {
 
 		return id, cmd, obj
 	}
+	fmt.Println("Error 30")
 	return hotstuff.ID(0), "", ""
 }
 

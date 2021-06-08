@@ -198,6 +198,7 @@ func (ec *ecdsaCrypto) Sign(block *hotstuff.Block) (cert hotstuff.PartialCert, e
 	hash := block.Hash()
 	r, s, err := ecdsa.Sign(rand.Reader, ec.getPrivateKey().PrivateKey, hash[:])
 	if err != nil {
+		fmt.Println("Error 21")
 		return nil, err
 	}
 	return &PartialCert{
@@ -216,9 +217,11 @@ func (ec *ecdsaCrypto) CreateQuorumCert(block *hotstuff.Block, signatures []hots
 	for _, s := range signatures {
 		blockHash := s.BlockHash()
 		if !bytes.Equal(hash[:], blockHash[:]) {
+			fmt.Println("Error 22")
 			return nil, ErrHashMismatch
 		}
 		if _, ok := qc.signatures[s.GetSignature().Signer()]; ok {
+			fmt.Println("Error 23")
 			return nil, ErrPartialDuplicate
 		}
 		qc.signatures[s.GetSignature().Signer()] = s.(*PartialCert).Signature
@@ -233,6 +236,7 @@ func (ec *ecdsaCrypto) VerifyPartialCert(cert hotstuff.PartialCert) bool {
 	replica, ok := ec.cfg.Replica(sig.Signer())
 	if !ok {
 		// logger.Info("ecdsaCrypto: got signature from replica whose ID (%d) was not in the config.")
+		fmt.Println("Error 24")
 		return false
 	}
 	pk := replica.PublicKey().(*ecdsa.PublicKey)
@@ -249,6 +253,7 @@ func (ec *ecdsaCrypto) VerifyQuorumCert(cert hotstuff.QuorumCert) bool {
 
 	qc := cert.(*QuorumCert)
 	if len(qc.GetSignatures()) < ec.cfg.QuorumSize() {
+		fmt.Println("Error 25")
 		return false
 	}
 	hash := qc.BlockHash()
