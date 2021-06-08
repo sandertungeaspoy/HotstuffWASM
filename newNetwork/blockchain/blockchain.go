@@ -3,6 +3,7 @@ package blockchain
 
 import (
 	"container/list"
+	"fmt"
 	"sync"
 
 	hotstuff "github.com/HotstuffWASM/newNetwork"
@@ -53,6 +54,7 @@ func (chain *blockChain) Get(hash hotstuff.Hash) (*hotstuff.Block, bool) {
 
 	elem, ok := chain.Blocks[hash]
 	if !ok {
+		fmt.Println("error 1")
 		return nil, false
 	}
 

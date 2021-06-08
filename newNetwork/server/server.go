@@ -142,7 +142,8 @@ func (srv *Server) Fetch(hash *hotstuff.Hash) {
 	replica, ok := srv.Hs.Config().Replica(id)
 	if !ok {
 		// logger.Infof("Fetch: could not find replica with id: %d", id)
-		return
+		panic("Fetch: could not find replica with id: %d")
+		// return
 	}
 
 	replica.Deliver(block)
@@ -168,8 +169,10 @@ func (srv *Server) Exec(cmd hotstuff.Command) {
 		srv.StartTime = time.Now()
 	}
 	if srv.CurrCmd%50 == 0 {
-		AppendCmd(string(cmd))
+		// AppendCmd(string(cmd))
+		fmt.Println(string(cmd))
 	}
+	fmt.Println(string(cmd))
 
 	// AppendCmd(string(cmd))
 	// if cmd == srv.Cmds.Cmds[0] {

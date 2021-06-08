@@ -54,8 +54,8 @@ func main() {
 	serverID = hotstuff.ID(0)
 	// value1 := js.Global().Get("document").Call("getElementById", "self-id").Get("innerText").String()
 	value1 := os.Args[1]
-	selfID, _ := strconv.ParseUint(strings.Split(value1, " ")[1], 10, 32)
-	// selfID, _ := strconv.ParseUint(value1, 10, 32)
+	// selfID, _ := strconv.ParseUint(strings.Split(value1, " ")[1], 10, 32)
+	selfID, _ := strconv.ParseUint(value1, 10, 32)
 	serverID = hotstuff.ID(selfID)
 	for {
 		if serverID != 0 {
@@ -275,7 +275,8 @@ func main() {
 				pcString, err := srv.Hs.OnPropose(block)
 				if err != nil {
 					fmt.Println(err)
-					continue
+					panic(err)
+					// continue
 				}
 				srv.Hs.Finish(block)
 				pc := StringToPartialCert(pcString)
@@ -334,7 +335,7 @@ func main() {
 			// 	timeSlice = append(timeSlice, tempTime)
 			// 	start = time.Now()
 			// }
-			if srv.Pm.PropDone == true && srv.CurrCmd == srv.MaxCmd && srv.Chess == false {
+			if srv.Pm.PropDone && srv.CurrCmd == srv.MaxCmd && !srv.Chess {
 				srv.Pm.Stop()
 				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
@@ -382,7 +383,8 @@ func main() {
 				pcString, err := srv.Hs.OnPropose(block)
 				if err != nil {
 					fmt.Println(err)
-					continue
+					panic(err)
+					// continue
 				}
 				srv.Hs.Finish(block)
 				// fmt.Print("Next view: ")
@@ -415,7 +417,7 @@ func main() {
 			// 	timeSlice = append(timeSlice, tempTime)
 			// 	start = time.Now()
 			// }
-			if srv.CurrCmd == srv.MaxCmd && srv.Chess == false {
+			if srv.CurrCmd == srv.MaxCmd && !srv.Chess {
 				srv.Pm.Stop()
 				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
@@ -610,9 +612,9 @@ func ConnectToPeer() (*webrtc.DataChannel, string) {
 		fmt.Printf("ICE Connection State has changed: %s\n", connectionState.String())
 	})
 
-	peerConnection.OnICEGatheringStateChange(func() {
-		fmt.Println(peerConnection.ICEGatheringState())
-	})
+	// peerConnection.OnICEGatheringStateChange(func() {
+	// fmt.Println(peerConnection.ICEGatheringState())
+	// })
 
 	// Register data channel creation handling
 
@@ -648,11 +650,11 @@ func ConnectToPeer() (*webrtc.DataChannel, string) {
 						}
 					} else if strings.TrimSpace(string(msg.Data)) == "startChessWhite" {
 						// fmt.Println("Starting chess")
-						CreateChessBoard("white")
+						// CreateChessBoard("white")
 						srv.Chess = true
 					} else if strings.TrimSpace(string(msg.Data)) == "startChessSpectate" {
 						// fmt.Println("Starting chess")
-						CreateChessBoard("spectate")
+						// CreateChessBoard("spectate")
 						srv.Chess = true
 					}
 				} else {
@@ -788,9 +790,9 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 		fmt.Printf("ICE Connection State has changed: %s\n", connectionState.String())
 	})
 
-	peerConnection.OnICEGatheringStateChange(func() {
-		fmt.Println(peerConnection.ICEGatheringState())
-	})
+	// peerConnection.OnICEGatheringStateChange(func() {
+	// 	fmt.Println(peerConnection.ICEGatheringState())
+	// })
 
 	waiter := make(chan struct{})
 
@@ -846,11 +848,11 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 				}
 			} else if strings.TrimSpace(string(msg.Data)) == "startChessWhite" {
 				// fmt.Println("Starting chess")
-				CreateChessBoard("white")
+				// CreateChessBoard("white")
 				srv.Chess = true
 			} else if strings.TrimSpace(string(msg.Data)) == "startChessSpectate" {
 				// fmt.Println("Starting chess")
-				CreateChessBoard("spectate")
+				// CreateChessBoard("spectate")
 				srv.Chess = true
 			}
 		} else {
@@ -930,7 +932,7 @@ func DeliverOffer(offer string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}
@@ -949,7 +951,7 @@ func DeliverAnswer(answer string, senderID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}
@@ -968,7 +970,7 @@ func ReceiveOffer() (string, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return "error", "Websocket"
 	}
@@ -996,7 +998,7 @@ func ReceiveAnswer() (string, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return "error", "Websocket"
 	}
@@ -1025,7 +1027,7 @@ func RemoveOffer() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1044,7 +1046,7 @@ func removeAnswer(senderID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1061,7 +1063,7 @@ func purgeWebRTCDatabase() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}

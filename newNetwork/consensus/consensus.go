@@ -296,19 +296,21 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 			safe = true
 		} else {
 			// logger.Debug("OnPropose: safety condition failed")
-			// fmt.Println("OnPropose: safety condition failed")
+			fmt.Println("OnPropose: safety condition failed")
 		}
 	}
 
 	if !safe {
 		hs.mut.Unlock()
 		// logger.Info("OnPropose: block not safe")
+		fmt.Println("Error 2")
 		return "", errors.New("OnPropose: block not safe")
 	}
 
 	if !hs.acceptor.Accept(block.GetCommand()) {
 		hs.mut.Unlock()
 		// logger.Info("OnPropose: command not accepted")
+		fmt.Println("Error 3")
 		return "", errors.New("OnPropose: command not accepted")
 	}
 
@@ -322,6 +324,7 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 	if err != nil {
 		hs.mut.Unlock()
 		// logger.Error("OnPropose: failed to sign vote: ", err)
+		fmt.Println("Error 4")
 		return "", errors.New("OnPropose: failed to sign vote: " + err.Error())
 	}
 
@@ -409,6 +412,7 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 	block, ok := hs.blocks.Get(cert.BlockHash())
 	if !ok {
 		// fmt.Println("Not ok")
+		fmt.Println("Error 5")
 		// logger.Debugf("Could not find block for vote: %.8s. Attempting to fetch.", cert.BlockHash())
 		hs.fetchBlockForVote(cert)
 		return
@@ -424,6 +428,7 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 		// too old
 		hs.mut.Unlock()
 		// fmt.Println("View is too old")
+		fmt.Println("Error 6")
 		return
 	}
 
@@ -431,6 +436,7 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 		// logger.Info("OnVote: Vote could not be verified!")
 		hs.mut.Unlock()
 		// fmt.Println("OnVote: Vote could not be verified!")
+		fmt.Println("Error 7")
 		return
 	}
 
@@ -443,11 +449,13 @@ func (hs *chainedhotstuff) OnVote(cert hotstuff.PartialCert) {
 	if len(votes) < hs.cfg.QuorumSize() {
 		hs.mut.Unlock()
 		// fmt.Println("Not enough votes, returning...")
+		fmt.Println("Error 8")
 		return
 	}
 
 	qc, err := hs.signer.CreateQuorumCert(block, votes)
 	if err != nil {
+		fmt.Println("Error 9")
 		// logger.Info("OnVote: could not create QC for block: ", err)
 		// fmt.Println("OnVote: could not create QC for block: ", err)
 	}
@@ -513,6 +521,7 @@ func (hs *chainedhotstuff) OnNewView(msg hotstuff.NewView) {
 func (hs *chainedhotstuff) deliver(block *hotstuff.Block) {
 	votes, ok := hs.pendingVotes[block.Hash()]
 	if !ok {
+		fmt.Println("Error 10")
 		return
 	}
 
