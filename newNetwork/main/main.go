@@ -946,7 +946,7 @@ func DeliverOffer(offer string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}
@@ -965,7 +965,7 @@ func DeliverAnswer(answer string, senderID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}
@@ -984,7 +984,7 @@ func ReceiveOffer() (string, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return "error", "Websocket"
 	}
@@ -1012,7 +1012,7 @@ func ReceiveAnswer() (string, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return "error", "Websocket"
 	}
@@ -1041,7 +1041,7 @@ func RemoveOffer() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1060,7 +1060,7 @@ func removeAnswer(senderID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1077,7 +1077,7 @@ func purgeWebRTCDatabase() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1099,7 +1099,7 @@ func EstablishConnections() {
 	if srv.ID == hotstuff.ID(1) {
 		for {
 			if len(peerMap) == 3 {
-				// time.Sleep(time.Second * 20)
+				time.Sleep(time.Second * 20)
 				break
 			}
 
@@ -1128,7 +1128,7 @@ func EstablishConnections() {
 			if len(peerMap) == 0 {
 				dc, leaderID := ConnectToLeader()
 				if leaderID == "error" || leaderID == "empty" {
-					// time.Sleep(time.Second * 5)
+					time.Sleep(time.Second * 5)
 					continue
 				}
 
@@ -1139,7 +1139,7 @@ func EstablishConnections() {
 				// srv.Pm.Start()
 				break
 			}
-			// time.Sleep(time.Second * 5)
+			time.Sleep(time.Second * 5)
 		}
 	} else if srv.ID == hotstuff.ID(3) {
 
@@ -1147,7 +1147,7 @@ func EstablishConnections() {
 			if len(peerMap) < 2 {
 				dc, leaderID := ConnectToLeader()
 				if leaderID == "error" || leaderID == "empty" {
-					// time.Sleep(time.Second * 5)
+					time.Sleep(time.Second * 5)
 					continue
 				}
 
@@ -1160,14 +1160,14 @@ func EstablishConnections() {
 			} else {
 				break
 			}
-			// time.Sleep(time.Second * 5)
+			time.Sleep(time.Second * 5)
 		}
 	} else if srv.ID == hotstuff.ID(4) {
 		for {
 			if len(peerMap) < 3 {
 				dc, leaderID := ConnectToLeader()
 				if leaderID == "error" || leaderID == "empty" {
-					// time.Sleep(time.Second * 5)
+					time.Sleep(time.Second * 5)
 					continue
 				}
 
@@ -1188,7 +1188,7 @@ func EstablishConnections() {
 					break
 				}
 			}
-			// time.Sleep(time.Second * 5)
+			time.Sleep(time.Second * 5)
 		}
 	}
 
