@@ -249,7 +249,7 @@ func main() {
 
 	// srv.Pm.Start()
 
-	go EstablishConnections()
+	EstablishConnections()
 	// restart:
 	for {
 		// fmt.Println(srv.Chess)
@@ -634,7 +634,7 @@ func ConnectToPeer() (*webrtc.DataChannel, string) {
 						if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 							srv.Pm.Start()
 							start = time.Now()
-							srv.Pm.Proposal <- srv.Hs.Propose()
+							// srv.Pm.Proposal <- srv.Hs.Propose()
 							srv.Pm.PropDone = false
 						} else {
 							srv.Pm.Start()
@@ -832,7 +832,7 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 				if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 					srv.Pm.Start()
 					start = time.Now()
-					srv.Pm.Proposal <- srv.Hs.Propose()
+					// srv.Pm.Proposal <- srv.Hs.Propose()
 					srv.Pm.PropDone = false
 				} else {
 					srv.Pm.Start()

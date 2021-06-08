@@ -66,12 +66,13 @@ func (s *Synchronizer) Init(hs hotstuff.Consensus) {
 
 // Start starts the synchronizer.
 func (s *Synchronizer) Start() {
-	if s.GetLeader(s.hs.Leaf().GetView()+1) == s.hs.Config().ID() {
-		// fmt.Println("Proposing")
-		// s.Proposal <- s.hs.Propose()
-		// s.PropDone = false
+	if s.GetLeader(s.hs.LastVote()+1) == s.hs.Config().ID() {
+		fmt.Println("Proposing")
+		s.Proposal <- s.hs.Propose()
+		s.PropDone = false
 		// fmt.Println("Proposed on channel")
 	}
+	fmt.Println("Starting...")
 	// document := js.Global().Get("document")
 	// buttons := document.Call("getElementsByClassName", "disabledButtons")
 	// for i := 0; i < buttons.Length(); i++ {
