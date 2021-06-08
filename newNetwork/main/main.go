@@ -928,7 +928,7 @@ func DeliverOffer(offer string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}
@@ -947,7 +947,7 @@ func DeliverAnswer(answer string, senderID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}
@@ -966,7 +966,7 @@ func ReceiveOffer() (string, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return "error", "Websocket"
 	}
@@ -994,7 +994,7 @@ func ReceiveAnswer() (string, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return "error", "Websocket"
 	}
@@ -1023,7 +1023,7 @@ func RemoveOffer() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1042,7 +1042,7 @@ func removeAnswer(senderID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}
@@ -1059,7 +1059,7 @@ func purgeWebRTCDatabase() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, "ws://85.165.212.251:13372", nil)
+	c, _, err := websocket.Dial(ctx, "ws://85.165.174.114:13372", nil)
 	if err != nil {
 		return
 	}
