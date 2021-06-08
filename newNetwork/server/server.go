@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall/js"
 	"time"
 
 	hotstuff "github.com/HotstuffWASM/newNetwork"
@@ -158,9 +157,9 @@ func (srv *Server) Deliver(_ context.Context, block *hotstuff.Block) {
 func (srv *Server) Exec(cmd hotstuff.Command) {
 	// fmt.Print("Command executed: ")
 	// fmt.Println(cmd)
-	if strings.Contains(string(cmd), "chess") {
-		execChess(cmd)
-	}
+	// if strings.Contains(string(cmd), "chess") {
+	// 	execChess(cmd)
+	// }
 	srv.CurrCmd++
 	if srv.CurrCmd%50 == 0 || srv.CurrCmd == 1 {
 		tempTime := time.Since(srv.StartTime)
@@ -213,26 +212,26 @@ func (cmdBuf *CmdBuffer) Accept(cmd hotstuff.Command) bool {
 	return true
 }
 
-func execChess(cmd hotstuff.Command) {
-	move := strings.Split(string(cmd), "chess")
-	moveCmd := strings.TrimSpace(move[1])
-	steps := strings.Split(moveCmd, "fromTo")
-	document := js.Global().Get("document")
-	game := js.Global().Get("game")
-	board := js.Global().Get("board")
-	status := js.Global().Get("updateStatus")
-	chessCmd := "ChessCMD = {from: '" + steps[0] + "', to: '" + steps[1] + "', promotion: 'q'}"
-	moveScript := document.Call("createElement", "script")
-	moveScript.Set("innerText", chessCmd)
-	document.Get("body").Call("appendChild", moveScript)
-	// AppendCmd(chessCmd)
-	game.Call("move", js.Global().Get("ChessCMD"))
-	board.Call("position", game.Call("fen"))
-	status.Invoke()
-	// fmt.Println("Chess executed")
-	document.Get("body").Call("removeChild", moveScript)
-	return
-}
+// func execChess(cmd hotstuff.Command) {
+// 	move := strings.Split(string(cmd), "chess")
+// 	moveCmd := strings.TrimSpace(move[1])
+// 	steps := strings.Split(moveCmd, "fromTo")
+// 	document := js.Global().Get("document")
+// 	game := js.Global().Get("game")
+// 	board := js.Global().Get("board")
+// 	status := js.Global().Get("updateStatus")
+// 	chessCmd := "ChessCMD = {from: '" + steps[0] + "', to: '" + steps[1] + "', promotion: 'q'}"
+// 	moveScript := document.Call("createElement", "script")
+// 	moveScript.Set("innerText", chessCmd)
+// 	document.Get("body").Call("appendChild", moveScript)
+// 	// AppendCmd(chessCmd)
+// 	game.Call("move", js.Global().Get("ChessCMD"))
+// 	board.Call("position", game.Call("fen"))
+// 	status.Invoke()
+// 	// fmt.Println("Chess executed")
+// 	document.Get("body").Call("removeChild", moveScript)
+// 	return
+// }
 
 // GetCommand returns the front command from the commandbuffer
 func (cmdBuf *CmdBuffer) GetCommand() *hotstuff.Command {
@@ -248,29 +247,29 @@ func (cmdBuf *CmdBuffer) GetCommand() *hotstuff.Command {
 	return nil
 }
 
-func AppendCmd(cmd string) {
+// func AppendCmd(cmd string) {
 
-	document := js.Global().Get("document")
+// 	document := js.Global().Get("document")
 
-	div := document.Call("getElementById", "cmdList")
+// 	div := document.Call("getElementById", "cmdList")
 
-	count := div.Get("childElementCount").Int()
-	// fmt.Println(count)
-	// countInt, _ := strconv.Atoi(count)
+// 	count := div.Get("childElementCount").Int()
+// 	// fmt.Println(count)
+// 	// countInt, _ := strconv.Atoi(count)
 
-	// fmt.Println(countInt)
-	for i := count; i > 50; i-- {
-		div.Call("removeChild", div.Get("lastElementChild"))
-	}
+// 	// fmt.Println(countInt)
+// 	for i := count; i > 50; i-- {
+// 		div.Call("removeChild", div.Get("lastElementChild"))
+// 	}
 
-	// document.getElementById("cmdList").removeChild(document.getElementById("cmdList").lastElementChild)
-	// divChild := document.Call("getElementById", "cmdList").Get("childNodes[0]")
+// 	// document.getElementById("cmdList").removeChild(document.getElementById("cmdList").lastElementChild)
+// 	// divChild := document.Call("getElementById", "cmdList").Get("childNodes[0]")
 
-	text := document.Call("createElement", "p")
+// 	text := document.Call("createElement", "p")
 
-	text.Set("innerText", cmd)
+// 	text.Set("innerText", cmd)
 
-	div.Call("insertBefore", text, div.Get("firstElementChild"))
+// 	div.Call("insertBefore", text, div.Get("firstElementChild"))
 
-	// document.Get("body").Call("appendChild", div)
-}
+// 	// document.Get("body").Call("appendChild", div)
+// }

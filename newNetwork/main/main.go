@@ -10,10 +10,10 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall/js"
 
 	// "syscall/js"
 	"time"
@@ -48,11 +48,12 @@ var start time.Time
 // var blocks int
 
 func main() {
-	registerCallbacks()
+	// registerCallbacks()
 
 	peerMap = make(map[hotstuff.ID]*webrtc.DataChannel)
 	serverID = hotstuff.ID(0)
-	value1 := js.Global().Get("document").Call("getElementById", "self-id").Get("innerText").String()
+	// value1 := js.Global().Get("document").Call("getElementById", "self-id").Get("innerText").String()
+	value1 := os.Args[1]
 	selfID, _ := strconv.ParseUint(strings.Split(value1, " ")[1], 10, 32)
 	// selfID, _ := strconv.ParseUint(value1, 10, 32)
 	serverID = hotstuff.ID(selfID)
@@ -207,7 +208,8 @@ func main() {
 		RecvBytes: recvBytes,
 	}
 
-	blockStr := js.Global().Get("document").Call("getElementById", "blocks").Get("value").String()
+	// blockStr := js.Global().Get("document").Call("getElementById", "blocks").Get("value").String()
+	blockStr := os.Args[2]
 	srv.MaxCmd, _ = strconv.Atoi(blockStr)
 	if srv.MaxCmd == 0 {
 		srv.MaxCmd = 1000
@@ -1313,344 +1315,344 @@ func SendStringTo(cmd string, srvID hotstuff.ID) error {
 	return nil
 }
 
-// GetSelfID gets the ID of the server
-func GetSelfID(this js.Value, i []js.Value) interface{} {
-	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
+// // GetSelfID gets the ID of the server
+// func GetSelfID(this js.Value, i []js.Value) interface{} {
+// 	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
 
-	selfID, _ := strconv.ParseUint(value1, 10, 32)
-	serverID = hotstuff.ID(selfID)
-	fmt.Println(serverID)
-	return nil
-}
+// 	selfID, _ := strconv.ParseUint(value1, 10, 32)
+// 	serverID = hotstuff.ID(selfID)
+// 	fmt.Println(serverID)
+// 	return nil
+// }
 
-// GetBlockNumber gets the amount of blocks to run for
-func GetBlockNumber(this js.Value, i []js.Value) interface{} {
-	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
+// // GetBlockNumber gets the amount of blocks to run for
+// func GetBlockNumber(this js.Value, i []js.Value) interface{} {
+// 	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
 
-	srv.MaxCmd, _ = strconv.Atoi(value1)
-	return nil
-}
+// 	srv.MaxCmd, _ = strconv.Atoi(value1)
+// 	return nil
+// }
 
-// PassUint8ArrayToGo passes array
-func PassUint8ArrayToGo(this js.Value, args []js.Value) interface{} {
-	recv := make([]byte, args[0].Get("length").Int())
+// // PassUint8ArrayToGo passes array
+// func PassUint8ArrayToGo(this js.Value, args []js.Value) interface{} {
+// 	recv := make([]byte, args[0].Get("length").Int())
 
-	_ = js.CopyBytesToGo(recv, args[0])
+// 	_ = js.CopyBytesToGo(recv, args[0])
 
-	recvLock.Lock()
-	recvBytes = append(recvBytes, recv)
-	recvLock.Unlock()
-	recieved <- recv
+// 	recvLock.Lock()
+// 	recvBytes = append(recvBytes, recv)
+// 	recvLock.Unlock()
+// 	recieved <- recv
 
-	return nil
-}
+// 	return nil
+// }
 
-// SetUint8ArrayInGo sets array
-func SetUint8ArrayInGo(this js.Value, args []js.Value) interface{} {
-	sendLock.Lock()
-	if len(sendBytes) == 0 {
-		sendLock.Unlock()
-		return nil
-	}
+// // SetUint8ArrayInGo sets array
+// func SetUint8ArrayInGo(this js.Value, args []js.Value) interface{} {
+// 	sendLock.Lock()
+// 	if len(sendBytes) == 0 {
+// 		sendLock.Unlock()
+// 		return nil
+// 	}
 
-	if args[0].Get("length").Int() == 0 {
-		sendLock.Unlock()
-		return nil
-	}
+// 	if args[0].Get("length").Int() == 0 {
+// 		sendLock.Unlock()
+// 		return nil
+// 	}
 
-	var msg []byte
-	if len(sendBytes) > 1 {
-		msg, sendBytes = sendBytes[0], sendBytes[1:]
-	} else {
-		msg, sendBytes = sendBytes[0], make([][]byte, 0)
-	}
-	sendLock.Unlock()
-	if msg == nil {
-		return nil
-	}
-	// fmt.Println("Sending bytes to JS")
-	_ = js.CopyBytesToJS(args[0], msg)
+// 	var msg []byte
+// 	if len(sendBytes) > 1 {
+// 		msg, sendBytes = sendBytes[0], sendBytes[1:]
+// 	} else {
+// 		msg, sendBytes = sendBytes[0], make([][]byte, 0)
+// 	}
+// 	sendLock.Unlock()
+// 	if msg == nil {
+// 		return nil
+// 	}
+// 	// fmt.Println("Sending bytes to JS")
+// 	_ = js.CopyBytesToJS(args[0], msg)
 
-	return nil
-}
+// 	return nil
+// }
 
-// GetArraySize gets the array size
-func GetArraySize(this js.Value, args []js.Value) interface{} {
+// // GetArraySize gets the array size
+// func GetArraySize(this js.Value, args []js.Value) interface{} {
 
-	if len(sendBytes) == 0 {
-		_ = js.CopyBytesToJS(args[1], []byte{0})
-		return nil
-	}
-	size := make([]byte, 10)
+// 	if len(sendBytes) == 0 {
+// 		_ = js.CopyBytesToJS(args[1], []byte{0})
+// 		return nil
+// 	}
+// 	size := make([]byte, 10)
 
-	msgSize := []byte(strconv.Itoa(len(sendBytes[0])))
+// 	msgSize := []byte(strconv.Itoa(len(sendBytes[0])))
 
-	copy(size, msgSize)
+// 	copy(size, msgSize)
 
-	_ = js.CopyBytesToJS(args[0], size)
-	_ = js.CopyBytesToJS(args[1], []byte{1})
+// 	_ = js.CopyBytesToJS(args[0], size)
+// 	_ = js.CopyBytesToJS(args[1], []byte{1})
 
-	return nil
-}
+// 	return nil
+// }
 
-// GetCommand gets the ID of the server
-func GetCommand(this js.Value, i []js.Value) interface{} {
-	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
-	fmt.Println(string(value1))
+// // GetCommand gets the ID of the server
+// func GetCommand(this js.Value, i []js.Value) interface{} {
+// 	value1 := js.Global().Get("document").Call("getElementById", i[0].String()).Get("value").String()
+// 	fmt.Println(string(value1))
 
-	cmd := string(value1)
-	if cmd != "" {
-		cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
-		incomingCmd <- cmd
-	}
-	// cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
-	// if serverID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
-	// 	cmdLock.Lock()
-	// 	command := hotstuff.Command(cmd)
-	// 	srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
-	// 	cmdLock.Unlock()
-	// 	// srv.Pm.Proposal <- srv.Hs.Propose()
-	// } else {
-	// 	incomingCmd <- cmd
-	// }
-	return nil
-}
+// 	cmd := string(value1)
+// 	if cmd != "" {
+// 		cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
+// 		incomingCmd <- cmd
+// 	}
+// 	// cmd = strconv.FormatUint(uint64(serverID), 10) + "cmdID" + cmd
+// 	// if serverID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
+// 	// 	cmdLock.Lock()
+// 	// 	command := hotstuff.Command(cmd)
+// 	// 	srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
+// 	// 	cmdLock.Unlock()
+// 	// 	// srv.Pm.Proposal <- srv.Hs.Propose()
+// 	// } else {
+// 	// 	incomingCmd <- cmd
+// 	// }
+// 	return nil
+// }
 
-func StartAgain(this js.Value, args []js.Value) interface{} {
-	// fmt.Println("Before")
-	starter <- struct{}{}
-	// fmt.Println("After")
-	return nil
-}
+// func StartAgain(this js.Value, args []js.Value) interface{} {
+// 	// fmt.Println("Before")
+// 	starter <- struct{}{}
+// 	// fmt.Println("After")
+// 	return nil
+// }
 
-func AppendCmd(document js.Value, cmd string) {
+// func AppendCmd(document js.Value, cmd string) {
 
-	div := js.Global().Get("document").Call("getElementById", "cmdList")
-
-	text := document.Call("createElement", "p")
-
-	text.Set("innerText", cmd)
-
-	div.Call("appendChild", text)
-
-	document.Get("body").Call("appendChild", div)
-}
-
-// func CreateCommandList() error {
-
-// 	document := js.Global().Get("document")
-// 	div := document.Call("createElement", "div")
-
-// 	div.Call("setAttribute", "style", "overflow:scroll; height:500px; width:500px; float:right; margin-right:150px")
-// 	div.Call("setAttribute", "id", "cmdList")
+// 	div := js.Global().Get("document").Call("getElementById", "cmdList")
 
 // 	text := document.Call("createElement", "p")
 
-// 	text.Set("innerText", "List of Executed Commands")
+// 	text.Set("innerText", cmd)
 
 // 	div.Call("appendChild", text)
 
 // 	document.Get("body").Call("appendChild", div)
-
-// 	return nil
 // }
 
-// func CreateChessGame() error {
+// // func CreateCommandList() error {
+
+// // 	document := js.Global().Get("document")
+// // 	div := document.Call("createElement", "div")
+
+// // 	div.Call("setAttribute", "style", "overflow:scroll; height:500px; width:500px; float:right; margin-right:150px")
+// // 	div.Call("setAttribute", "id", "cmdList")
+
+// // 	text := document.Call("createElement", "p")
+
+// // 	text.Set("innerText", "List of Executed Commands")
+
+// // 	div.Call("appendChild", text)
+
+// // 	document.Get("body").Call("appendChild", div)
+
+// // 	return nil
+// // }
+
+// // func CreateChessGame() error {
+// // 	document := js.Global().Get("document")
+// // 	div := document.Call("createElement", "div")
+// // 	div.Call("setAttribute", "id", "ChessDiv")
+// // 	textbox := document.Call("createElement", "input")
+// // 	textbox.Call("setAttribute", "type", "text")
+// // 	textbox.Call("setAttribute", "id", "ChessVS")
+// // 	lbl := document.Call("createElement", "label")
+// // 	lbl.Call("setAttribute", "for", "ChessVS")
+// // 	lbl.Set("innerText", "Player to invite: ")
+
+// // 	buttonGroup := document.Call("createElement", "div")
+// // 	buttonGroup.Call("setAttribute", "id", "ChessVS")
+// // 	// buttonGroup.Call("setAttribute", "class", "center")
+
+// // 	for id := range peerMap {
+// // 		fmt.Println("Creating buttons..")
+// // 		button := document.Call("createElement", "button")
+// // 		button.Call("setAttribute", "type", "button")
+// // 		idInt := strconv.FormatUint(uint64(id), 10)
+// // 		innerText := "Server " + idInt
+// // 		button.Set("innerText", innerText)
+// // 		if id == 1 {
+// // 			button.Call("setAttribute", "class", "button1")
+// // 		} else if id == 2 {
+// // 			button.Call("setAttribute", "style", "background-color: #ed7d31")
+// // 		} else if id == 3 {
+// // 			button.Call("setAttribute", "style", "background-color: #5b9bd5")
+// // 		} else if id == 4 {
+// // 			button.Call("setAttribute", "style", "background-color: #70ad47")
+// // 		}
+// // 		button.Call("setAttribute", "onClick", "CreateChess()")
+// // 		buttonGroup.Call("appendChild", button)
+// // 	}
+// // 	// document.getElementById('self-id').style = 'background-color: #ffc000;
+// // 	// <div id="menu" class="btn-group-vertical">
+// // 	// 	<button type="button" class="btn btn-md btn-default" onclick="restartWebRTCHandler();" id="restartButton">Restart WebRTC</button>
+// // 	// 	<a id="checksum" role="button" class="btn btn-md btn-default" href="hash.txt" download>MD5 Checksum</a>
+// // 	// </div>
+
+// // 	// CreatChessBtn := document.Call("createElement", "button")
+// // 	// CreatChessBtn.Set("innerText", "Invite to Chess")
+// // 	// CreatChessBtn.Call("setAttribute", "id", "ChessGen")
+// // 	// CreatChessBtn.Call("setAttribute", "onClick", "CreateChess()")
+
+// // 	div.Call("appendChild", lbl)
+// // 	div.Call("appendChild", buttonGroup)
+// // 	// div.Call("appendChild", CreatChessBtn)
+
+// // 	document.Call("getElementById", "chessGame").Call("appendChild", div)
+
+// // 	return nil
+// // }
+
+// func CreateChessBoard(color string) {
 // 	document := js.Global().Get("document")
+// 	document.Call("getElementById", "ChessDiv").Call("setAttribute", "style", "display: none")
 // 	div := document.Call("createElement", "div")
-// 	div.Call("setAttribute", "id", "ChessDiv")
-// 	textbox := document.Call("createElement", "input")
-// 	textbox.Call("setAttribute", "type", "text")
-// 	textbox.Call("setAttribute", "id", "ChessVS")
-// 	lbl := document.Call("createElement", "label")
-// 	lbl.Call("setAttribute", "for", "ChessVS")
-// 	lbl.Set("innerText", "Player to invite: ")
-
-// 	buttonGroup := document.Call("createElement", "div")
-// 	buttonGroup.Call("setAttribute", "id", "ChessVS")
-// 	// buttonGroup.Call("setAttribute", "class", "center")
-
-// 	for id := range peerMap {
-// 		fmt.Println("Creating buttons..")
-// 		button := document.Call("createElement", "button")
-// 		button.Call("setAttribute", "type", "button")
-// 		idInt := strconv.FormatUint(uint64(id), 10)
-// 		innerText := "Server " + idInt
-// 		button.Set("innerText", innerText)
-// 		if id == 1 {
-// 			button.Call("setAttribute", "class", "button1")
-// 		} else if id == 2 {
-// 			button.Call("setAttribute", "style", "background-color: #ed7d31")
-// 		} else if id == 3 {
-// 			button.Call("setAttribute", "style", "background-color: #5b9bd5")
-// 		} else if id == 4 {
-// 			button.Call("setAttribute", "style", "background-color: #70ad47")
-// 		}
-// 		button.Call("setAttribute", "onClick", "CreateChess()")
-// 		buttonGroup.Call("appendChild", button)
-// 	}
-// 	// document.getElementById('self-id').style = 'background-color: #ffc000;
-// 	// <div id="menu" class="btn-group-vertical">
-// 	// 	<button type="button" class="btn btn-md btn-default" onclick="restartWebRTCHandler();" id="restartButton">Restart WebRTC</button>
-// 	// 	<a id="checksum" role="button" class="btn btn-md btn-default" href="hash.txt" download>MD5 Checksum</a>
-// 	// </div>
-
-// 	// CreatChessBtn := document.Call("createElement", "button")
-// 	// CreatChessBtn.Set("innerText", "Invite to Chess")
-// 	// CreatChessBtn.Call("setAttribute", "id", "ChessGen")
-// 	// CreatChessBtn.Call("setAttribute", "onClick", "CreateChess()")
-
-// 	div.Call("appendChild", lbl)
-// 	div.Call("appendChild", buttonGroup)
-// 	// div.Call("appendChild", CreatChessBtn)
-
+// 	div.Call("setAttribute", "id", "myBoard")
+// 	div.Call("setAttribute", "style", "width: 400px; float:left")
+// 	// document.Get("body").Call("appendChild", div)
 // 	document.Call("getElementById", "chessGame").Call("appendChild", div)
 
+// 	info := document.Call("createElement", "div")
+// 	info.Call("setAttribute", "style", "width: 500px")
+
+// 	fen := document.Call("createElement", "div")
+// 	fen.Call("setAttribute", "id", "fen")
+// 	// fen.Call("setAttribute", "class", "space")
+// 	// document.Get("body").Call("appendChild", fen)
+// 	info.Call("appendChild", fen)
+
+// 	space1 := document.Call("createElement", "div")
+// 	space1.Call("setAttribute", "class", "moreSpace")
+// 	info.Call("appendChild", space1)
+
+// 	status := document.Call("createElement", "div")
+// 	status.Call("setAttribute", "id", "status")
+// 	// status.Call("setAttribute", "class", "space")
+// 	// document.Get("body").Call("appendChild", status)
+// 	// document.Call("getElementById", "chessGame")
+// 	info.Call("appendChild", status)
+
+// 	space2 := document.Call("createElement", "div")
+// 	space2.Call("setAttribute", "class", "moreSpace")
+// 	info.Call("appendChild", space2)
+
+// 	pgn := document.Call("createElement", "div")
+// 	pgn.Call("setAttribute", "id", "pgn")
+// 	// pgn.Call("setAttribute", "style", "float:left")
+// 	// document.Get("body").Call("appendChild", pgn)
+// 	info.Call("appendChild", pgn)
+
+// 	document.Call("getElementById", "chessGame").Call("appendChild", info)
+
+// 	role := document.Call("createElement", "script")
+// 	roleString := ("var role = \"" + color + "\"")
+// 	role.Set("innerText", roleString)
+
+// 	chess := document.Call("createElement", "script")
+// 	// chess.Call("setAttribute", "id", "chess")
+// 	// "var move = game.move({ from: source, to: target, promotion: 'q'});"+
+// 	// " game.undo(); "+
+// 	// " if (move === null) return 'snapback';"+
+// 	chess.Set("innerText", "var board = null; var game = new Chess();"+
+// 		"var $status = $('#status');"+
+// 		"var $fen = $('#fen');"+
+// 		"var $pgn = $('#pgn'); "+
+// 		"function onDragStart (source, piece, position, orientation) {"+
+// 		" if (game.game_over()) return false;"+
+// 		" if ((game.turn() === 'w' && role === 'black') || (game.turn() === 'b' && role === 'white' ) || (role === 'black' && piece.search(/^w/) !== -1) || (role === 'white' && piece.search(/^b/) !== -1) || (role === 'spectate')) {return false}};"+
+// 		" function onDrop (source, target) { "+
+// 		" var possibleMoves = game.moves({square: source});"+
+// 		" var allowed = false;"+
+// 		" for (i = 0; i < possibleMoves.length; i++) {"+
+// 		" if (possibleMoves[i].includes(target)) { "+
+// 		" allowed = true; break;};};"+
+// 		" if(allowed === false) { return 'snapback';};"+
+// 		" document.getElementById(\"command\").value = \"chess\" + source + \"fromTo\" + target;"+
+// 		" GetCommand('command'); };"+
+// 		" function updateStatus () {"+
+// 		"var status = '';"+
+// 		"var moveColor = 'White';"+
+// 		"if (game.turn() === 'b') {moveColor = 'Black'};"+
+// 		"if (game.in_checkmate()) { "+
+// 		"status = 'Game over, ' + moveColor + ' is in checkmate.'}"+
+// 		"	else if (game.in_draw()) {"+
+// 		"status = 'Game over, drawn position'} "+
+// 		"else {status = moveColor + ' to move';"+
+// 		" if (game.in_check()) {"+
+// 		"status += ', ' + moveColor + ' is in check'		  }		};"+
+// 		"$status.html(status);"+
+// 		"$fen.html(game.fen());"+
+// 		"$pgn.html(game.pgn());"+
+// 		"board.position(game.fen())	  }; "+
+// 		"function onSnapEnd () {board.position(game.fen())};"+
+// 		" var config = {draggable: true,position: 'start',onDragStart: onDragStart,onDrop: onDrop, onSnapEnd: onSnapEnd, orientation: '"+color+"'};"+
+// 		"board = Chessboard('myBoard', config);	  "+
+// 		"updateStatus()")
+// 	document.Get("body").Call("appendChild", chess)
+// 	document.Get("body").Call("appendChild", role)
+// }
+
+// func CreateChess(this js.Value, args []js.Value) interface{} {
+// 	vsID := args[0].String()
+// 	chessVS, err := strconv.Atoi(vsID)
+// 	if err != nil {
+// 		return nil
+// 	}
+
+// 	// fmt.Println(hotstuff.ID(chessVS))
+// 	SendStringTo("startChessWhite", hotstuff.ID(chessVS))
+
+// 	for id, _ := range peerMap {
+// 		if id != serverID && id != hotstuff.ID(chessVS) {
+// 			SendStringTo("startChessSpectate", id)
+// 		}
+// 	}
+// 	srv.Chess = true
+// 	CreateChessBoard("black")
 // 	return nil
 // }
 
-func CreateChessBoard(color string) {
-	document := js.Global().Get("document")
-	document.Call("getElementById", "ChessDiv").Call("setAttribute", "style", "display: none")
-	div := document.Call("createElement", "div")
-	div.Call("setAttribute", "id", "myBoard")
-	div.Call("setAttribute", "style", "width: 400px; float:left")
-	// document.Get("body").Call("appendChild", div)
-	document.Call("getElementById", "chessGame").Call("appendChild", div)
+// // func ChessTest(this js.Value, args []js.Value) interface{} {
 
-	info := document.Call("createElement", "div")
-	info.Call("setAttribute", "style", "width: 500px")
+// // 	from := "e2"
+// // 	to := "e4"
 
-	fen := document.Call("createElement", "div")
-	fen.Call("setAttribute", "id", "fen")
-	// fen.Call("setAttribute", "class", "space")
-	// document.Get("body").Call("appendChild", fen)
-	info.Call("appendChild", fen)
+// // 	document := js.Global().Get("document")
 
-	space1 := document.Call("createElement", "div")
-	space1.Call("setAttribute", "class", "moreSpace")
-	info.Call("appendChild", space1)
+// // 	game := js.Global().Get("game")
+// // 	board := js.Global().Get("board")
+// // 	chessCmd := "ChessCMD = {from: '" + from + "', to: '" + to + "', promotion: 'q'}"
+// // 	move := document.Call("createElement", "script")
+// // 	move.Set("innerText", chessCmd)
+// // 	document.Get("body").Call("appendChild", move)
+// // 	// AppendCmd(chessCmd)
+// // 	game.Call("move", js.Global().Get("ChessCMD"))
+// // 	board.Call("position", game.Call("fen"))
+// // 	fmt.Println("Chess executed")
+// // 	document.Get("body").Call("removeChild", move)
 
-	status := document.Call("createElement", "div")
-	status.Call("setAttribute", "id", "status")
-	// status.Call("setAttribute", "class", "space")
-	// document.Get("body").Call("appendChild", status)
-	// document.Call("getElementById", "chessGame")
-	info.Call("appendChild", status)
+// // 	return nil
+// // }
 
-	space2 := document.Call("createElement", "div")
-	space2.Call("setAttribute", "class", "moreSpace")
-	info.Call("appendChild", space2)
-
-	pgn := document.Call("createElement", "div")
-	pgn.Call("setAttribute", "id", "pgn")
-	// pgn.Call("setAttribute", "style", "float:left")
-	// document.Get("body").Call("appendChild", pgn)
-	info.Call("appendChild", pgn)
-
-	document.Call("getElementById", "chessGame").Call("appendChild", info)
-
-	role := document.Call("createElement", "script")
-	roleString := ("var role = \"" + color + "\"")
-	role.Set("innerText", roleString)
-
-	chess := document.Call("createElement", "script")
-	// chess.Call("setAttribute", "id", "chess")
-	// "var move = game.move({ from: source, to: target, promotion: 'q'});"+
-	// " game.undo(); "+
-	// " if (move === null) return 'snapback';"+
-	chess.Set("innerText", "var board = null; var game = new Chess();"+
-		"var $status = $('#status');"+
-		"var $fen = $('#fen');"+
-		"var $pgn = $('#pgn'); "+
-		"function onDragStart (source, piece, position, orientation) {"+
-		" if (game.game_over()) return false;"+
-		" if ((game.turn() === 'w' && role === 'black') || (game.turn() === 'b' && role === 'white' ) || (role === 'black' && piece.search(/^w/) !== -1) || (role === 'white' && piece.search(/^b/) !== -1) || (role === 'spectate')) {return false}};"+
-		" function onDrop (source, target) { "+
-		" var possibleMoves = game.moves({square: source});"+
-		" var allowed = false;"+
-		" for (i = 0; i < possibleMoves.length; i++) {"+
-		" if (possibleMoves[i].includes(target)) { "+
-		" allowed = true; break;};};"+
-		" if(allowed === false) { return 'snapback';};"+
-		" document.getElementById(\"command\").value = \"chess\" + source + \"fromTo\" + target;"+
-		" GetCommand('command'); };"+
-		" function updateStatus () {"+
-		"var status = '';"+
-		"var moveColor = 'White';"+
-		"if (game.turn() === 'b') {moveColor = 'Black'};"+
-		"if (game.in_checkmate()) { "+
-		"status = 'Game over, ' + moveColor + ' is in checkmate.'}"+
-		"	else if (game.in_draw()) {"+
-		"status = 'Game over, drawn position'} "+
-		"else {status = moveColor + ' to move';"+
-		" if (game.in_check()) {"+
-		"status += ', ' + moveColor + ' is in check'		  }		};"+
-		"$status.html(status);"+
-		"$fen.html(game.fen());"+
-		"$pgn.html(game.pgn());"+
-		"board.position(game.fen())	  }; "+
-		"function onSnapEnd () {board.position(game.fen())};"+
-		" var config = {draggable: true,position: 'start',onDragStart: onDragStart,onDrop: onDrop, onSnapEnd: onSnapEnd, orientation: '"+color+"'};"+
-		"board = Chessboard('myBoard', config);	  "+
-		"updateStatus()")
-	document.Get("body").Call("appendChild", chess)
-	document.Get("body").Call("appendChild", role)
-}
-
-func CreateChess(this js.Value, args []js.Value) interface{} {
-	vsID := args[0].String()
-	chessVS, err := strconv.Atoi(vsID)
-	if err != nil {
-		return nil
-	}
-
-	// fmt.Println(hotstuff.ID(chessVS))
-	SendStringTo("startChessWhite", hotstuff.ID(chessVS))
-
-	for id, _ := range peerMap {
-		if id != serverID && id != hotstuff.ID(chessVS) {
-			SendStringTo("startChessSpectate", id)
-		}
-	}
-	srv.Chess = true
-	CreateChessBoard("black")
-	return nil
-}
-
-// func ChessTest(this js.Value, args []js.Value) interface{} {
-
-// 	from := "e2"
-// 	to := "e4"
-
-// 	document := js.Global().Get("document")
-
-// 	game := js.Global().Get("game")
-// 	board := js.Global().Get("board")
-// 	chessCmd := "ChessCMD = {from: '" + from + "', to: '" + to + "', promotion: 'q'}"
-// 	move := document.Call("createElement", "script")
-// 	move.Set("innerText", chessCmd)
-// 	document.Get("body").Call("appendChild", move)
-// 	// AppendCmd(chessCmd)
-// 	game.Call("move", js.Global().Get("ChessCMD"))
-// 	board.Call("position", game.Call("fen"))
-// 	fmt.Println("Chess executed")
-// 	document.Get("body").Call("removeChild", move)
-
-// 	return nil
+// func registerCallbacks() {
+// 	js.Global().Set("GetSelfID", js.FuncOf(GetSelfID))
+// 	js.Global().Set("GetBlockNumber", js.FuncOf(GetBlockNumber))
+// 	js.Global().Set("GetCommand", js.FuncOf(GetCommand))
+// 	js.Global().Set("PassUint8ArrayToGo", js.FuncOf(PassUint8ArrayToGo))
+// 	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
+// 	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))
+// 	js.Global().Set("StartAgain", js.FuncOf(StartAgain))
+// 	js.Global().Set("CreateChess", js.FuncOf(CreateChess))
+// 	// js.Global().Set("ChessTest", js.FuncOf(ChessTest))
 // }
-
-func registerCallbacks() {
-	js.Global().Set("GetSelfID", js.FuncOf(GetSelfID))
-	js.Global().Set("GetBlockNumber", js.FuncOf(GetBlockNumber))
-	js.Global().Set("GetCommand", js.FuncOf(GetCommand))
-	js.Global().Set("PassUint8ArrayToGo", js.FuncOf(PassUint8ArrayToGo))
-	js.Global().Set("SetUint8ArrayInGo", js.FuncOf(SetUint8ArrayInGo))
-	js.Global().Set("GetArraySize", js.FuncOf(GetArraySize))
-	js.Global().Set("StartAgain", js.FuncOf(StartAgain))
-	js.Global().Set("CreateChess", js.FuncOf(CreateChess))
-	// js.Global().Set("ChessTest", js.FuncOf(ChessTest))
-}
 
 // defer elapsed("GetSelfID")()
 func elapsed(what string) func() {
