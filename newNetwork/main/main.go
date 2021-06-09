@@ -261,6 +261,7 @@ func main() {
 		// 	}
 		// }
 		if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
+			fmt.Println("I am leader")
 			select {
 			case msgByte := <-srv.Pm.Proposal:
 				if msgByte == nil {
@@ -346,6 +347,7 @@ func main() {
 			}
 
 		} else {
+			fmt.Println("I am replica")
 			select {
 			case <-recieved:
 				recvLock.Lock()
@@ -367,38 +369,50 @@ func main() {
 					continue
 				}
 				recvLock.Lock()
-				id, cmd, obj := FormatBytes(recvBytes[0])
+				// temp := string(recvBytes[0])
+				_, cmd, obj := FormatBytes(recvBytes[0])
 				if len(recvBytes) > 1 {
 					recvBytes = recvBytes[1:]
 				} else {
+					// fmt.Print("Deleting ")
+					// fmt.Println(len(recvBytes))
 					recvBytes = make([][]byte, 0)
 				}
 				recvLock.Unlock()
 				// fmt.Print("RecvBytes: ")
 				// fmt.Println(recvBytes)
-				if id == hotstuff.ID(0) || cmd != "Propose" {
-					fmt.Println("Error 28")
-					continue
+
+				if cmd == "Propose" {
+					block := StringToBlock(obj)
+					// fmt.Print("Handle propose for view: ")
+					// fmt.Println(block.View)
+					pcString, err := srv.Hs.OnPropose(block)
+					if err != nil {
+						fmt.Println(err)
+						panic(err)
+						// continue
+					}
+					srv.Hs.Finish(block)
+					// fmt.Print("Next view: ")
+					// fmt.Println(hs.Leaf().GetView() + 1)
+					// pc := StringToPartialCert(pcString)
+					// srv.Hs.OnVote(pc)
+					// fmt.Println("Sending PC to leader...")
+					sendLock.Lock()
+					// sendBytes = append(sendBytes, []byte(pcString))
+					SendCommand([]byte(pcString))
+					sendLock.Unlock()
 				}
-				block := StringToBlock(obj)
-				// fmt.Print("Handle propose for view: ")
-				// fmt.Println(block.View)
-				pcString, err := srv.Hs.OnPropose(block)
-				if err != nil {
-					fmt.Println(err)
-					panic(err)
-					// continue
-				}
-				srv.Hs.Finish(block)
-				// fmt.Print("Next view: ")
-				// fmt.Println(hs.Leaf().GetView() + 1)
-				// pc := StringToPartialCert(pcString)
-				// srv.Hs.OnVote(pc)
-				// fmt.Println("Sending PC to leader...")
-				sendLock.Lock()
-				// sendBytes = append(sendBytes, []byte(pcString))
-				SendCommand([]byte(pcString))
-				sendLock.Unlock()
+				fmt.Println("Error 28")
+				// if id == hotstuff.ID(0) || cmd != "Propose" {
+				// 	fmt.Println("Error 28")
+				// 	fmt.Println(temp)
+				// 	fmt.Println(id)
+				// 	fmt.Println(cmd)
+				// 	fmt.Println(obj)
+				// 	continue
+				// }
+
 			case <-srv.Pm.NewView:
 				timeoutview := srv.Hs.NewView()
 				srv.Hs.OnNewView(timeoutview)

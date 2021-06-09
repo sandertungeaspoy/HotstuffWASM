@@ -339,7 +339,10 @@ func (hs *chainedhotstuff) OnPropose(block *hotstuff.Block) (string, error) {
 	}
 
 	hs.blocks.Store(block)
+	fmt.Print("LastVote: ")
+	fmt.Println(hs.lastVote)
 	hs.lastVote = block.GetView()
+	fmt.Println(hs.lastVote)
 
 	// finish := func() {
 	// 	hs.update(block)
