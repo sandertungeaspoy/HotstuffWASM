@@ -163,11 +163,19 @@ func (srv *Server) Exec(cmd hotstuff.Command) {
 	srv.CurrCmd++
 	if srv.CurrCmd%50 == 0 || srv.CurrCmd == 1 {
 		tempTime := time.Since(srv.StartTime)
+		// fmt.Println(tempTime)
+		tempTime = tempTime - srv.Pm.InitialTimeout*time.Duration(srv.Pm.Timeouts)
+		// fmt.Println(tempTime)
+		srv.Pm.Timeouts = 0
 		srv.TimeSlice = append(srv.TimeSlice, tempTime)
 		srv.StartTime = time.Now()
 		fmt.Println(string(cmd))
 	}
-	srv.Pm.InitialTimeout = time.Duration(2) * time.Second
+
+	if srv.CurrCmd == srv.MaxCmd {
+		fmt.Println(srv.TimeSlice)
+	}
+	srv.Pm.InitialTimeout = time.Duration(100) * time.Millisecond
 	// AppendCmd(string(cmd))
 	// fmt.Println(string(cmd))
 	// if cmd == srv.Cmds.Cmds[0] {

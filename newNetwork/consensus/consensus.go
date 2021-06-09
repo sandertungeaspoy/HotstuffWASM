@@ -506,7 +506,7 @@ func (hs *chainedhotstuff) OnNewView(msg hotstuff.NewView) {
 
 	hs.mut.Unlock()
 	// signal the synchronizer
-	fmt.Println("Call synchronizer")
+	// fmt.Println("Call synchronizer")
 	hs.synchronizer.OnNewView()
 }
 

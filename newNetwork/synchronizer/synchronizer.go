@@ -27,6 +27,7 @@ type Synchronizer struct {
 	Proposal       chan []byte
 	NewView        chan bool
 	PropDone       bool
+	Timeouts       int
 }
 
 // New creates a new Synchronizer.
@@ -128,8 +129,9 @@ func (s *Synchronizer) newViewTimeout() {
 		// case <-ctx.Done():
 		// 	return
 		case <-s.timer.C:
-			fmt.Println("Timeout")
+			// fmt.Println("Timeout")
 			s.hs.CreateDummy()
+			s.Timeouts++
 			// if s.GetLeader(s.hs.LastVote()+1) == s.hs.Config().ID() {
 			// 	// go func() {
 
@@ -140,7 +142,7 @@ func (s *Synchronizer) newViewTimeout() {
 			// 	s.NewView <- true
 			// }
 			s.NewView <- true
-			fmt.Println("Resetting timer...")
+			// fmt.Println("Resetting timer...")
 			s.mut.Lock()
 			s.timer.Reset(s.InitialTimeout)
 			s.mut.Unlock()
