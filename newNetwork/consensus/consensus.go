@@ -3,7 +3,6 @@ package consensus
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -483,26 +482,26 @@ func (hs *chainedhotstuff) OnNewView(msg hotstuff.NewView) {
 
 	hs.updateHighQC(msg.QC)
 
-	if hs.synchronizer.GetLeader(hs.lastVote+1) == hs.cfg.ID() {
-		v, ok := hs.newView[msg.View]
-		if !ok {
-			v = make(map[hotstuff.ID]struct{})
-		}
-		v[msg.ID] = struct{}{}
-		hs.newView[msg.View] = v
-
-		// fmt.Print("Quorumsize: ")
-		// fmt.Println(hs.cfg.QuorumSize())
-
-		// fmt.Print("Map of timeouts: ")
-		// fmt.Println(hs.newView[msg.View])
-
-		if len(hs.newView[msg.View]) < hs.cfg.QuorumSize() {
-			hs.mut.Unlock()
-			fmt.Println("Not quorum for newView")
-			return
-		}
+	// if hs.synchronizer.GetLeader(hs.lastVote+1) == hs.cfg.ID() {
+	v, ok := hs.newView[msg.View]
+	if !ok {
+		v = make(map[hotstuff.ID]struct{})
 	}
+	v[msg.ID] = struct{}{}
+	hs.newView[msg.View] = v
+
+	// fmt.Print("Quorumsize: ")
+	// fmt.Println(hs.cfg.QuorumSize())
+
+	// fmt.Print("Map of timeouts: ")
+	// fmt.Println(hs.newView[msg.View])
+
+	if len(hs.newView[msg.View]) < hs.cfg.QuorumSize() {
+		hs.mut.Unlock()
+		// fmt.Println("Not quorum for newView")
+		return
+	}
+	// }
 
 	hs.mut.Unlock()
 	// signal the synchronizer
