@@ -254,6 +254,7 @@ func main() {
 	EstablishConnections()
 	srv.StartTime = time.Now()
 	srv.TimeSlice = make([]time.Duration, 0)
+	srv.AdjTimeSlice = make([]time.Duration, 0)
 	// restart:
 	for {
 		if started {
