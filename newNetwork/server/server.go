@@ -179,7 +179,7 @@ func (srv *Server) Exec(cmd hotstuff.Command) {
 		fmt.Println("Adjusted Times")
 		fmt.Println(srv.AdjTimeSlice)
 	}
-	srv.Pm.InitialTimeout = time.Duration(100) * time.Millisecond
+	srv.Pm.InitialTimeout = time.Duration(500) * time.Millisecond
 	// AppendCmd(string(cmd))
 	// fmt.Println(string(cmd))
 	// if cmd == srv.Cmds.Cmds[0] {

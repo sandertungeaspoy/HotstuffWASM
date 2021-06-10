@@ -343,7 +343,7 @@ func main() {
 			// 	fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
 			// 	start = time.Now()
 			// }
-			if srv.Pm.PropDone == true && srv.CurrCmd == srv.MaxCmd+200 && srv.Chess == false {
+			if srv.Pm.PropDone == true && srv.CurrCmd == srv.MaxCmd+500 && srv.Chess == false {
 				srv.Pm.Stop()
 				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
@@ -422,7 +422,7 @@ func main() {
 			// 	fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
 			// 	start = time.Now()
 			// }
-			if srv.CurrCmd == srv.MaxCmd+200 && srv.Chess == false {
+			if srv.CurrCmd == srv.MaxCmd+500 && srv.Chess == false {
 				srv.Pm.Stop()
 				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
