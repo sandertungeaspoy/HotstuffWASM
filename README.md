@@ -1,4 +1,4 @@
-# WasmStuff
+![alt text](https://github.com/sandertungeaspoy/HotstuffWASM/blob/main/LOGO.png?raw=true)
 
 This is the repository for WasmStuff.
 A modification of relab/hotstuff that compiles to WebAssembly.
