@@ -1,4 +1,4 @@
-MD5 hash of main.go: 6f8ca5d618f8dca7772f6f2a0214e99d CertUtil: -hashfile command completed successfully.
+MD5 hash of main.go: b79ee06b809a7e27b78c514c59d81620 CertUtil: -hashfile command completed successfully.
  
-MD5 hash of server.wasm: 21af08fcecb4b34cafc49275b5b10ff9 CertUtil: -hashfile command completed successfully.
+MD5 hash of server.wasm: 7761ccbaaa39582d1b68089b62d91e6d CertUtil: -hashfile command completed successfully.
  
