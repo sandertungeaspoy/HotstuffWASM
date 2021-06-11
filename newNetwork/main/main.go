@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"math/big"
 	"strconv"
 	"strings"
@@ -332,7 +333,7 @@ func main() {
 			// 	timeSlice = append(timeSlice, tempTime)
 			// 	start = time.Now()
 			// }
-			if srv.Pm.PropDone == true && srv.CurrCmd == srv.MaxCmd && srv.Chess == false {
+			if srv.Pm.PropDone == true && srv.CurrCmd == srv.MaxCmd+500 && srv.Chess == false {
 				srv.Pm.Stop()
 				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
@@ -359,6 +360,12 @@ func main() {
 						recvBytes = make([][]byte, 0)
 					}
 					recvLock.Unlock()
+					newViewMsg := srv.Hs.NewView()
+					srv.Hs.OnNewView(newViewMsg)
+					newViewString := NewViewToString(newViewMsg)
+					sendLock.Lock()
+					SendCommand([]byte(newViewString))
+					sendLock.Unlock()
 					continue
 				}
 				recvLock.Lock()
@@ -413,7 +420,7 @@ func main() {
 			// 	timeSlice = append(timeSlice, tempTime)
 			// 	start = time.Now()
 			// }
-			if srv.CurrCmd == srv.MaxCmd && srv.Chess == false {
+			if srv.CurrCmd == srv.MaxCmd+500 && srv.Chess == false {
 				srv.Pm.Stop()
 				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
@@ -1264,9 +1271,13 @@ func mapkeyDataChannel(m map[hotstuff.ID]*webrtc.DataChannel, value *webrtc.Data
 
 func SendCommand(cmd []byte) error {
 	if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()) {
-		for _, peer := range peerMap {
+		for id, peer := range peerMap {
 			err := peer.Send(cmd)
 			if err != nil {
+				fmt.Println(err)
+				if err == io.ErrClosedPipe {
+					delete(peerMap, id)
+				}
 				return err
 			}
 		}
@@ -1285,6 +1296,10 @@ func SendCommand(cmd []byte) error {
 			if ok {
 				err := conn.Send(cmd)
 				if err != nil {
+					fmt.Println(err)
+					if err == io.ErrClosedPipe {
+						delete(peerMap, srv.Pm.GetLeader(srv.Hs.LastVote()+1))
+					}
 					return err
 				}
 			}
@@ -1297,9 +1312,13 @@ func SendCommand(cmd []byte) error {
 
 func SendStringTo(cmd string, srvID hotstuff.ID) error {
 	if srvID == hotstuff.ID(0) {
-		for _, peer := range peerMap {
+		for id, peer := range peerMap {
 			err := peer.SendText(cmd)
 			if err != nil {
+				fmt.Println(err)
+				if err == io.ErrClosedPipe {
+					delete(peerMap, id)
+				}
 				return err
 			}
 		}
@@ -1307,6 +1326,9 @@ func SendStringTo(cmd string, srvID hotstuff.ID) error {
 		err := peerMap[srvID].SendText(cmd)
 		if err != nil {
 			fmt.Println(err)
+			if err == io.ErrClosedPipe {
+				delete(peerMap, srvID)
+			}
 			return err
 		}
 	}
