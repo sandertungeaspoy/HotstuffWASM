@@ -18,12 +18,17 @@ To demo the project on a browser perform the following steps:
 6. For each window choose Benchmark or Chess(go to step 9.)
 7. Input number of commands to benchmark (default 1000)
 8. Click GO in all windows to start the benchmark - After completion execution times will be printed in the console
-9. When the system is ready, buttons are enabled
+9. Wait until the buttons are enabled
 10. Choose which other server to challenge to a game of chess
 
 A commandline version is also included in this release.
+
 Located in the folder 'HotstuffWASM/newNetwork/main'.
+
 To demo the system from command line locate the 'main.exe' file.
+
 The file take to command line arguments server ID and number of commands to run.
+
 Example command: 'main.exe 1 500'
+
 The commandline system can be executed separate or together with the browser setup.
