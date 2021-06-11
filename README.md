@@ -21,9 +21,14 @@ To demo the project on a browser perform the following steps:
 9. When the system is ready, buttons are enabled
 10. Choose which other server to challenge to a game of chess
 
-A commandline version is also included in this release.\\
-Located in the folder 'HotstuffWASM/newNetwork/main'.\\
-To demo the system from command line locate the 'main.exe' file.\\
-The file take to command line arguments server ID and number of commands to run.\\
-Example command: 'main.exe 1 500'\\
+A commandline version is also included in this release.
+
+Located in the folder 'HotstuffWASM/newNetwork/main'.
+
+To demo the system from command line locate the 'main.exe' file.
+
+The file take to command line arguments server ID and number of commands to run.
+
+Example command: 'main.exe 1 500'
+
 The commandline system can be executed separate or together with the browser setup.
