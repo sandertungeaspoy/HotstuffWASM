@@ -6,12 +6,12 @@ A modification of relab/hotstuff that compiles to WebAssembly.
 
 ## Run it yourself
 
-The easiest way of testing the system is found by downloading the Release Tag WasmStuff-1.0.
+The easiest way of testing the system is found by downloading the Release Tag WasmStuff Initial Release.
 That release contains all the necessary files to run and test the system locally.
 
 To demo the project on a browser perform the following steps:
 
-1. Download the release named WasmStuff-1.0
+1. Download the release named WasmStuff Initial Release
 2. Open a terminal and navigate to the folder 'HotstuffWASM/newNetwork'
 3. Start the web server by inputting this command: 'websocket/websocket.exe'
 4. Open 4 windows of http://127.0.0.1:8080/websocket/server.html
