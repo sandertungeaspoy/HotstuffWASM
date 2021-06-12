@@ -3,7 +3,6 @@ package consensus
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -499,14 +498,14 @@ func (hs *chainedhotstuff) OnNewView(msg hotstuff.NewView) {
 
 		if len(hs.newView[msg.View]) < hs.cfg.QuorumSize() {
 			hs.mut.Unlock()
-			fmt.Println("Not quorum for newView")
+			// fmt.Println("Not quorum for newView")
 			return
 		}
 	}
 
 	hs.mut.Unlock()
 	// signal the synchronizer
-	fmt.Println("Call synchronizer")
+	// fmt.Println("Call synchronizer")
 	hs.synchronizer.OnNewView()
 }
 
