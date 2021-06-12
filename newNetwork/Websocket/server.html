@@ -13,6 +13,14 @@
             var write = new WebAssembly.Memory({initial:10, maximum:100});
             var readMsg = new String(read.buffer)
 			const go = new Go();
+
+            if (!WebAssembly.instantiateStreaming) { // polyfill
+			WebAssembly.instantiateStreaming = async (resp, importObject) => {
+				const source = await (await resp).arrayBuffer();
+				return await WebAssembly.instantiate(source, importObject);
+			};
+		}
+
 			WebAssembly.instantiateStreaming(fetch("server.wasm"), go.importObject, { js: { mem: read , mem: write} }).then(
 				result => {
           			mod = result.module;
