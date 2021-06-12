@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"math/big"
 	"strconv"
 	"strings"
@@ -43,7 +44,6 @@ var cmdLock sync.Mutex
 var peerMap map[hotstuff.ID]*webrtc.DataChannel
 
 var starter chan struct{}
-
 var start time.Time
 
 // var blocks int
@@ -247,15 +247,10 @@ func main() {
 
 	EstablishConnections()
 	// restart:
+	srv.TimeSlice = make([]time.Duration, 0)
+	srv.StartTime = time.Now()
+	start = time.Now()
 	for {
-		// fmt.Println(srv.Chess)
-		// if srv.Pm.GetLeader(hs.LastVote()) != srv.Pm.GetLeader(hs.LastVote()+1) {
-		// 	if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
-		// 		fmt.Println("I am Leader")
-		// 	} else {
-		// 		// fmt.Println("I am Normal Replica")
-		// 	}
-		// }
 		if srv.ID == srv.Pm.GetLeader(hs.LastVote()+1) {
 			select {
 			case msgByte := <-srv.Pm.Proposal:
@@ -324,14 +319,17 @@ func main() {
 				SendCommand([]byte(msgString))
 				sendLock.Unlock()
 			}
-			// if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
-			// 	fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
+			// if srv.CurrCmd%50 == 0 && srv.CurrCmd != 0 {
+			// 	tempTime := time.Since(start)
+			// 	// fmt.Printf("%s took %v\n", "50 blocks", tempTime)
+			// 	timeSlice = append(timeSlice, tempTime)
 			// 	start = time.Now()
 			// }
-			if srv.Pm.PropDone == true && srv.CurrCmd == srv.MaxCmd && srv.Chess == false {
+			if srv.Pm.PropDone == true && srv.CurrCmd == srv.MaxCmd+500 && srv.Chess == false {
 				srv.Pm.Stop()
 				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
+				fmt.Println(srv.TimeSlice)
 				return
 			}
 
@@ -354,6 +352,12 @@ func main() {
 						recvBytes = make([][]byte, 0)
 					}
 					recvLock.Unlock()
+					newViewMsg := srv.Hs.NewView()
+					srv.Hs.OnNewView(newViewMsg)
+					newViewString := NewViewToString(newViewMsg)
+					sendLock.Lock()
+					SendCommand([]byte(newViewString))
+					sendLock.Unlock()
 					continue
 				}
 				recvLock.Lock()
@@ -402,14 +406,17 @@ func main() {
 				srv.Cmds.Cmds = append(srv.Cmds.Cmds, command)
 				cmdLock.Unlock()
 			}
-			// if srv.Hs.BlockChain().Len()%50 == 0 && srv.Hs.BlockChain().Len() != 0 {
-			// 	fmt.Printf("%s took %v\n", "50 blocks", time.Since(start))
+			// if srv.CurrCmd%50 == 0 && srv.CurrCmd != 0 {
+			// 	tempTime := time.Since(start)
+			// 	// fmt.Printf("%s took %v\n", "50 blocks", tempTime)
+			// 	timeSlice = append(timeSlice, tempTime)
 			// 	start = time.Now()
 			// }
-			if srv.CurrCmd == srv.MaxCmd && srv.Chess == false {
+			if srv.CurrCmd == srv.MaxCmd+500 && srv.Chess == false {
 				srv.Pm.Stop()
 				fmt.Printf("%v commands took %v\n", srv.MaxCmd, time.Since(start))
 				fmt.Println("Pacemaker stopped...")
+				fmt.Println(srv.TimeSlice)
 				return
 			}
 
@@ -828,7 +835,6 @@ func ConnectToLeader() (*webrtc.DataChannel, string) {
 				if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()+1) {
 					srv.Pm.Start()
 					start = time.Now()
-					// srv.Pm.Proposal <- srv.Hs.Propose()
 					srv.Pm.PropDone = false
 				} else {
 					srv.Pm.Start()
@@ -1256,9 +1262,13 @@ func mapkeyDataChannel(m map[hotstuff.ID]*webrtc.DataChannel, value *webrtc.Data
 
 func SendCommand(cmd []byte) error {
 	if srv.ID == srv.Pm.GetLeader(srv.Hs.LastVote()) {
-		for _, peer := range peerMap {
+		for id, peer := range peerMap {
 			err := peer.Send(cmd)
 			if err != nil {
+				fmt.Println(err)
+				if err == io.ErrClosedPipe {
+					delete(peerMap, id)
+				}
 				return err
 			}
 		}
@@ -1277,6 +1287,10 @@ func SendCommand(cmd []byte) error {
 			if ok {
 				err := conn.Send(cmd)
 				if err != nil {
+					fmt.Println(err)
+					if err == io.ErrClosedPipe {
+						delete(peerMap, srv.Pm.GetLeader(srv.Hs.LastVote()+1))
+					}
 					return err
 				}
 			}
@@ -1289,9 +1303,13 @@ func SendCommand(cmd []byte) error {
 
 func SendStringTo(cmd string, srvID hotstuff.ID) error {
 	if srvID == hotstuff.ID(0) {
-		for _, peer := range peerMap {
+		for id, peer := range peerMap {
 			err := peer.SendText(cmd)
 			if err != nil {
+				fmt.Println(err)
+				if err == io.ErrClosedPipe {
+					delete(peerMap, id)
+				}
 				return err
 			}
 		}
@@ -1299,6 +1317,9 @@ func SendStringTo(cmd string, srvID hotstuff.ID) error {
 		err := peerMap[srvID].SendText(cmd)
 		if err != nil {
 			fmt.Println(err)
+			if err == io.ErrClosedPipe {
+				delete(peerMap, srvID)
+			}
 			return err
 		}
 	}

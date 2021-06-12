@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"syscall/js"
+	"time"
 
 	hotstuff "github.com/HotstuffWASM/newNetwork"
 	"github.com/HotstuffWASM/newNetwork/config"
@@ -20,21 +21,24 @@ import (
 // Server is the server-side of the gorums backend.
 // It is responsible for calling handler methods on the consensus instance.
 type Server struct {
-	ID        hotstuff.ID
-	Addr      string
-	Hs        hotstuff.Consensus
-	Pm        *synchronizer.Synchronizer
-	Cfg       *Config
-	PubKey    *ecdsa.PublicKey
-	Cert      *tls.Certificate
-	CertPEM   []byte
-	PrivKey   *ecdsa.PrivateKey
-	Cmds      CmdBuffer
-	Chess     bool
-	MaxCmd    int
-	CurrCmd   int
-	SendBytes [][]byte
-	RecvBytes [][]byte
+	ID           hotstuff.ID
+	Addr         string
+	Hs           hotstuff.Consensus
+	Pm           *synchronizer.Synchronizer
+	Cfg          *Config
+	PubKey       *ecdsa.PublicKey
+	Cert         *tls.Certificate
+	CertPEM      []byte
+	PrivKey      *ecdsa.PrivateKey
+	Cmds         CmdBuffer
+	Chess        bool
+	MaxCmd       int
+	CurrCmd      int
+	SendBytes    [][]byte
+	RecvBytes    [][]byte
+	StartTime    time.Time
+	TimeSlice    []time.Duration
+	AdjTimeSlice []time.Duration
 }
 
 // NewServer creates a new Server.
@@ -159,7 +163,30 @@ func (srv *Server) Exec(cmd hotstuff.Command) {
 		execChess(cmd)
 	}
 	srv.CurrCmd++
-	AppendCmd(string(cmd))
+	if srv.CurrCmd%50 == 0 || srv.CurrCmd == 1 {
+		tempTime := time.Since(srv.StartTime)
+		// fmt.Println(tempTime)
+		srv.TimeSlice = append(srv.TimeSlice, tempTime)
+		tempTime = tempTime - srv.Pm.InitialTimeout*time.Duration(srv.Pm.Timeouts)
+		// fmt.Println(tempTime)
+		srv.Pm.Timeouts = 0
+		srv.AdjTimeSlice = append(srv.AdjTimeSlice, tempTime)
+		srv.StartTime = time.Now()
+		// fmt.Println(string(cmd))
+	}
+
+	if srv.CurrCmd == srv.MaxCmd {
+		fmt.Println(srv.TimeSlice)
+		fmt.Println("Adjusted Times")
+		fmt.Println(srv.AdjTimeSlice)
+	}
+	if srv.CurrCmd%50 == 0 {
+		AppendCmd(string(cmd))
+	}
+
+	srv.Pm.InitialTimeout = time.Millisecond * time.Duration(500)
+
+	// AppendCmd(string(cmd))
 	// if cmd == srv.Cmds.Cmds[0] {
 	// 	srv.Cmds.Cmds = srv.Cmds.Cmds[1:]
 	// }
